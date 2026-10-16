@@ -1,0 +1,55 @@
+# Dependencies and generated files
+node_modules/
+dist/
+dist-ssr/
+coverage/
+.vite/
+.cache/
+*.tsbuildinfo
+*.log
+.eslintcache
+
+# Local configuration, credentials, and deployment account links
+.env
+.env.*
+.envrc
+!.env.example
+.npmrc
+.yarnrc
+.yarnrc.yml
+.netrc
+.vercel/
+.netlify/
+.aws/
+.ssh/
+secrets/
+*credentials*.json
+*service-account*.json
+*service_account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Participant data and local QA artifacts are never source code
+research-data/
+raw-data/
+local-data/
+exports/
+results/
+backups/
+outputs/
+screenshots/
+toxicheck-research-*.json
+toxicheck-research-*.csv
+*.har
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.local

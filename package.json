@@ -1,0 +1,71 @@
+{
+  "name": "toxicheck-research-experiment",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build",
+    "lint": "run-s lint:oxlint lint:eslint",
+    "lint:oxlint": "oxlint .",
+    "lint:eslint": "eslint .",
+    "lint:legacy": "eslint src",
+    "test": "node --test tests/*.test.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "check:isolation": "node scripts/check-build-isolation.mjs",
+    "check": "run-s check:secrets lint test build check:isolation",
+    "format": "prettier --write --experimental-cli src/"
+  },
+  "dependencies": {
+    "@zxing/browser": "0.2.1",
+    "@zxing/library": "0.23.0",
+    "lucide-vue-next": "1.0.0",
+    "pinia": "4.0.3",
+    "tesseract.js": "7.0.0",
+    "vue": "3.6.0-rc.11",
+    "vue-router": "5.4.0"
+  },
+  "devDependencies": {
+    "@tsconfig/node24": "24.0.5",
+    "@types/node": "24.19.2",
+    "@vitejs/plugin-vue": "6.0.10",
+    "@vue/eslint-config-typescript": "14.9.0",
+    "@vue/tsconfig": "0.9.1",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-oxlint": "1.73.0",
+    "eslint-plugin-vue": "10.9.2",
+    "jiti": "2.7.0",
+    "npm-run-all2": "9.0.3",
+    "oxlint": "1.73.0",
+    "prettier": "3.9.5",
+    "typescript": "6.0.3",
+    "vite": "8.3.4",
+    "vite-plugin-vue-devtools": "8.2.1",
+    "vue-eslint-parser": "10.4.1",
+    "vue-tsc": "3.3.13"
+  },
+  "engines": {
+    "node": "24.x",
+    "npm": ">=11"
+  },
+  "packageManager": "npm@12.2.0",
+  "overrides": {
+    "vue": "3.6.0-rc.11",
+    "@vue/compiler-core": "3.6.0-rc.11",
+    "@vue/compiler-dom": "3.6.0-rc.11",
+    "@vue/compiler-sfc": "3.6.0-rc.11",
+    "@vue/compiler-ssr": "3.6.0-rc.11",
+    "@vue/compiler-vapor": "3.6.0-rc.11",
+    "@vue/reactivity": "3.6.0-rc.11",
+    "@vue/runtime-core": "3.6.0-rc.11",
+    "@vue/runtime-dom": "3.6.0-rc.11",
+    "@vue/runtime-vapor": "3.6.0-rc.11",
+    "@vue/server-renderer": "3.6.0-rc.11",
+    "@vue/shared": "3.6.0-rc.11",
+    "@vue/compat": "3.6.0-rc.11"
+  }
+}
