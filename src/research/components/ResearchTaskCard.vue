@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { getResearchCategory } from '../data/categories';
 import { getIngredientsByIds } from '../data/ingredients';
 import type { ResearchScenario } from '../researchTypes';
 
@@ -11,6 +13,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ 'update:compositionOpen': [open: boolean] }>();
+const compositionLabel = computed(() => getResearchCategory(props.scenario.categoryId).compositionLabel);
 
 function updateComposition(event: Event): void {
   const open = (event.currentTarget as HTMLDetailsElement).open;
@@ -41,7 +44,7 @@ function updateComposition(event: Event): void {
       :open="compositionOpen"
       @toggle="updateComposition"
     >
-      <summary>Исходный состав группы</summary>
+      <summary>{{ compositionLabel }}</summary>
       <ul class="task-card__list">
         <li
           v-for="ingredient in getIngredientsByIds(props.scenario.categoryIngredientIds)"
@@ -55,8 +58,8 @@ function updateComposition(event: Event): void {
     </details>
 
     <template v-else>
-      <h3 class="task-card__composition-title">Исходный состав группы</h3>
-      <ul class="task-card__list" aria-label="Исходный состав группы">
+      <h3 class="task-card__composition-title">{{ compositionLabel }}</h3>
+      <ul class="task-card__list" :aria-label="compositionLabel">
         <li
           v-for="ingredient in getIngredientsByIds(props.scenario.categoryIngredientIds)"
           :key="ingredient.id"

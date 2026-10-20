@@ -11,6 +11,9 @@ let Workspace;
 let TaskCard;
 let TaskIntro;
 let Training;
+let IngredientSearch;
+let categories;
+let ingredients;
 let scenarios;
 
 before(async () => {
@@ -25,6 +28,9 @@ before(async () => {
   ({ default: TaskCard } = await server.ssrLoadModule('/src/research/components/ResearchTaskCard.vue'));
   ({ default: TaskIntro } = await server.ssrLoadModule('/src/research/views/ResearchTaskIntroView.vue'));
   ({ default: Training } = await server.ssrLoadModule('/src/research/views/ResearchTrainingView.vue'));
+  ({ default: IngredientSearch } = await server.ssrLoadModule('/src/research/components/ResearchIngredientSearch.vue'));
+  categories = await server.ssrLoadModule('/src/research/data/categories.ts');
+  ingredients = await server.ssrLoadModule('/src/research/data/ingredients.ts');
   scenarios = await server.ssrLoadModule('/src/research/data/scenarios.ts');
 });
 
@@ -58,7 +64,7 @@ function renderWorkspace(condition, isTraining = false) {
   }));
 }
 
-test('training has its own title and all three groups for either starting condition', async () => {
+test('training has its own title and six groups only in Hybrid', async () => {
   for (const condition of ['flat', 'hybrid']) {
     const html = await renderWorkspace(condition, true);
     const headings = elements(html, 'h1');
@@ -69,7 +75,16 @@ test('training has its own title and all three groups for either starting condit
     const groupLabels = elements(html, 'button')
       .map((button) => attribute(button, 'aria-label')?.value?.content)
       .filter((label) => label?.startsWith('Группа '));
-    assert.deepEqual(groupLabels, ['Группа 1', 'Группа 2', 'Группа 3']);
+    assert.deepEqual(groupLabels, condition === 'hybrid'
+      ? ['Группа 1', 'Группа 2', 'Группа 3', 'Группа 4', 'Группа 5', 'Группа 6']
+      : []);
+    const ingredientButtons = elements(html, 'button')
+      .map((button) => attribute(button, 'aria-label')?.value?.content)
+      .filter((label) => /^E\d+ /.test(label ?? ''));
+    assert.deepEqual(ingredientButtons, [
+      'E300 Аскорбиновая кислота - добавить', 'E330 Лимонная кислота - добавить', 'E331 Цитраты натрия - добавить',
+      'E322 Лецитины - добавить', 'E440 Пектины - добавить', 'E500 Карбонаты натрия - добавить',
+    ]);
     assert.ok(html.includes(scenarios.trainingScenario.requirement));
   }
 });
@@ -98,13 +113,14 @@ test('normal and pinned instructions both render the controlled source disclosur
       assert.equal(details.length, 1);
       assert.equal(Boolean(attribute(details[0], 'open')), compositionOpen);
       assert.equal(elements(html, 'li').length, scenario.categoryIngredientIds.length);
-      assert.equal(elements(html, 'summary')[0].children[0].content, 'Исходный состав группы');
+      assert.equal(elements(html, 'summary')[0].children[0].content, 'Состав группы бензоатов');
     }
   }
 });
 
 test('all six tasks and training use identical instructions across both conditions and screens', async () => {
   for (const scenario of [...scenarios.researchScenarios, scenarios.trainingScenario]) {
+    const compositionLabel = categories.getResearchCategory(scenario.categoryId).compositionLabel;
     for (const condition of ['flat', 'hybrid']) {
       const props = {
         session: { participantId: 'QA_SSR_ONLY', sequenceId: 'A' },
@@ -123,27 +139,30 @@ test('all six tasks and training use identical instructions across both conditio
       }
       assert.equal(elements(intro, 'details').length, 0);
       assert.equal(elements(intro, 'li').length, scenario.categoryIngredientIds.length);
-      assert.ok(elements(intro, 'ul').some((node) => attribute(node, 'aria-label')?.value?.content === 'Исходный состав группы'));
+      assert.ok(elements(intro, 'ul').some((node) => attribute(node, 'aria-label')?.value?.content === compositionLabel));
       const card = elements(intro, 'section').find((node) =>
         attribute(node, 'class')?.value?.content.split(' ').includes('task-card'));
       const captionIndex = card.children.findIndex((node) => node.type === 1 && node.tag === 'h3');
       const listIndex = card.children.findIndex((node) => node.type === 1 && node.tag === 'ul');
       assert.ok(captionIndex >= 0 && captionIndex < listIndex);
-      assert.equal(card.children[captionIndex].children[0].content, 'Исходный состав группы');
+      assert.equal(card.children[captionIndex].children[0].content, compositionLabel);
       const sourceCodes = card.children[listIndex].children.filter((node) => node.type === 1 && node.tag === 'li')
         .map((node) => node.children.find((child) => child.type === 1 && child.tag === 'span').children[0].content);
       assert.deepEqual(sourceCodes, scenario.categoryIngredientIds);
       for (const details of elements(workspace, 'details')) {
         assert.ok(!attribute(details, 'open'));
         const summary = details.children.find((node) => node.type === 1 && node.tag === 'summary');
-        assert.equal(summary.children[0].content, 'Исходный состав группы');
+        assert.equal(summary.children[0].content, compositionLabel);
+        const codes = elements(workspace, 'li').slice(0, scenario.categoryIngredientIds.length)
+          .map((node) => node.children.find((child) => child.type === 1 && child.tag === 'span').children[0].content);
+        assert.deepEqual(codes, scenario.categoryIngredientIds);
       }
     }
   }
 });
 
 test('every main and training pre-start card has the exact same approved copy in Flat and Hybrid', async () => {
-  const expected = 'Ознакомьтесь с условием задания и составом группы. Во время выполнения список ингредиентов можно посмотреть повторно: нажмите Исходный состав группы, чтобы раскрыть его. Запоминать ингредиенты не требуется. Отсчёт времени начнётся после нажатия Начать задание.';
+  const expected = 'Ознакомьтесь с условием задания и составом группы. Во время выполнения список ингредиентов можно повторно открыть под условием задания. Запоминать ингредиенты не требуется. Отсчёт времени начнётся после нажатия Начать задание.';
   for (const condition of ['flat', 'hybrid']) {
     for (const scenario of [...scenarios.researchScenarios, scenarios.trainingScenario]) {
       const training = scenario === scenarios.trainingScenario;
@@ -162,6 +181,23 @@ test('every main and training pre-start card has the exact same approved copy in
       const text = paragraphs
         .flatMap((node) => node.children.map((child) => child.content ?? '')).join(' ').replace(/\s+/g, ' ').trim();
       assert.equal(text, expected);
+    }
+  }
+});
+
+test('the shared inline search renders aliases and formatted E-codes with canonical names', async () => {
+  for (const [id, name, queries] of [
+    ['E320', 'BHA', ['BHA', 'вНа', 'ИРФ', '320', 'E320', 'е320', 'E 320', 'E-320', 'бутилгидроксианизол']],
+    ['E321', 'BHT', ['BHT', 'вНт', 'ИРЕ', '321', 'E321', 'Е321', 'E 321', 'E-321', 'бутилгидрокситолуол']],
+  ]) {
+    for (const modelValue of queries) {
+      const html = await renderToString(createSSRApp(IngredientSearch, {
+        modelValue, ingredients: ingredients.researchIngredients, selectedIds: [],
+      }));
+      const rows = elements(html, 'button')
+        .map((button) => attribute(button, 'aria-label')?.value?.content)
+        .filter((label) => /^E\d+ /.test(label ?? ''));
+      assert.deepEqual(rows, [`${id} ${name} - добавить`], modelValue);
     }
   }
 });

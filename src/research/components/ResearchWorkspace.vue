@@ -36,7 +36,7 @@ const removeCount = ref(0);
 const correctionsCount = ref(0);
 const compositionOpen = ref(false);
 const taskTitle = computed(() => props.isTraining ? 'Тренировочное задание' : props.scenario.categoryName);
-const canSelectCategories = computed(() => props.isTraining || props.condition === 'hybrid');
+const canSelectCategories = computed(() => props.condition === 'hybrid');
 const workspace = ref<HTMLElement | null>(null);
 const conditionBlock = ref<HTMLElement | null>(null);
 const pinnedInstruction = ref<HTMLElement | null>(null);

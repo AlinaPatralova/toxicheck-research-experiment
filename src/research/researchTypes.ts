@@ -26,6 +26,7 @@ export type ResearchIngredient = {
 export type ResearchCategoryDefinition = {
   id: string;
   name: string;
+  compositionLabel: string;
   ingredientIds: string[];
 };
 

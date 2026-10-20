@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Search, X } from 'lucide-vue-next';
 import ResearchIngredientOption from './ResearchIngredientOption.vue';
+import { searchIngredients } from '../utils/searchIngredients';
 import type { ResearchIngredient } from '../researchTypes';
 
 const props = defineProps<{
@@ -21,20 +22,7 @@ const selectedIdSet = computed(() => new Set(props.selectedIds));
 const results = ref<HTMLElement | null>(null);
 let lastBrowseId = '';
 
-function normalizeSearchValue(value: string): string {
-  return value.trim().toLocaleLowerCase().replaceAll('ё', 'е').replace(/[е]/g, 'e');
-}
-
-const filteredIngredients = computed(() => {
-  const query = normalizeSearchValue(props.modelValue);
-  if (!query) return props.ingredients;
-  return props.ingredients.filter((ingredient) => [
-    ingredient.id,
-    ingredient.code,
-    ingredient.name,
-    ...ingredient.keywords,
-  ].map(normalizeSearchValue).join(' ').includes(query));
-});
+const filteredIngredients = computed(() => searchIngredients(props.ingredients, props.modelValue));
 
 function onPageScroll(): void {
   const list = results.value;

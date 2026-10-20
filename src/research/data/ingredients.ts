@@ -242,7 +242,7 @@ export const researchIngredients: ResearchIngredient[] = [
     categoryId: 'antioxidants',
     categoryName: 'Антиоксиданты',
     description: 'Антиоксидант',
-    keywords: ['бутилгидроксианизол', 'butylated hydroxyanisole']
+    keywords: ['бутилгидроксианизол', 'butylated hydroxyanisole', 'вна', 'ирф']
   },
   {
     id: 'E321',
@@ -251,7 +251,7 @@ export const researchIngredients: ResearchIngredient[] = [
     categoryId: 'antioxidants',
     categoryName: 'Антиоксиданты',
     description: 'Антиоксидант',
-    keywords: ['бутилгидрокситолуол', 'butylated hydroxytoluene']
+    keywords: ['бутилгидрокситолуол', 'butylated hydroxytoluene', 'внт', 'ире']
   },
   {
     id: 'E300',

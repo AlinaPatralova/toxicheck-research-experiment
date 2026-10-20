@@ -1,5 +1,57 @@
 # Mobile UI Verification
 
+## Search And Training Update (2026-10-20)
+
+The current implementation supersedes the older training checks below:
+training category controls appear only in Hybrid, with six groups in the
+existing 3-by-2 grid. Flat has the same six isolated ingredients and individual
+search, without category controls. Groups 1-3 and the single training task,
+including its gold profile, are unchanged. Groups 4-6 reuse local ingredients:
+
+| Group | Ingredient IDs |
+| --- | --- |
+| 1 | E322, E440 |
+| 2 | E330, E331 |
+| 3 | E300, E500 |
+| 4 | E300, E322 |
+| 5 | E330, E440 |
+| 6 | E331, E500 |
+
+No ingredient or canonical name was added. Overlaps exercise the existing
+provenance model: removing a group preserves other category/manual sources;
+profile removal excludes the ingredient from every active source, and re-add
+restores the counts without duplicates. E300 is still outside target group 2.
+
+The shared inline search supports explicit BHA/BHT aliases in Cyrillic and
+the Russian keyboard layout. Numeric E-code queries accept optional Latin or
+Cyrillic E, whitespace and a hyphen; exact numeric matches precede partial
+matches. Normalization never globally converts Russian letters into Latin.
+
+Source captions are explicit category data, shared by the pre-start heading
+and the closed-by-default working disclosure. Source lists, task instructions,
+gold profiles, metrics, logging, and export formats are unchanged. Both
+pre-start views use the same neutral instruction about reopening the list.
+
+Verification for this update:
+
+- `npm run check`: secret hygiene, lint, 44 tests, type check, production build,
+  and production-service isolation passed.
+- Browser: 42 search cases passed across Flat and Hybrid.
+- Browser: all six main scenarios in both conditions (12 submissions) retained
+  their exact gold profiles and `exact_success: true`.
+- Both training conditions retained `[E300, E330, E331]`, exact success, and
+  `is_training: true`. Keep training attempts outside the main analysis.
+- Exclusion/restoration logs for E322 retained both overlapping group sources.
+- 390-by-844 viewport: the training grid has three columns/two rows, no
+  horizontal overflow, and existing 44 px category controls.
+- Explicit keyboard simulation: search and the matching result remain above
+  the simulated keyboard, the expanded source remains open, and the footer
+  returns after closure. This is not a physical Android/iOS keyboard test.
+- No browser warnings/errors were observed.
+
+Screenshots and the test-only browser export are outside Git under
+`../outputs/research-search-training-20261020/`.
+
 ## Scope
 
 This change belongs to `dev` in the standalone research repository. Publish
@@ -22,10 +74,9 @@ the visible copy remains interactive. The source composition is not the gold
 profile.
 
 Training is titled "Тренировочное задание" rather than the target group name.
-All three isolated training groups are available regardless of the first
-experimental condition. Main Flat tasks still have no category controls;
-main Hybrid tasks retain their existing six choices. Training instructions,
-ingredients and gold profile are unchanged.
+Six isolated training groups are available only in Hybrid. Main Flat tasks
+still have no category controls; main Hybrid tasks retain their existing six
+choices. Training instructions, ingredients and gold profile are unchanged.
 
 Keyboard detection combines an editable search field, touch capability, a
 substantial viewport reduction, and separate opening/closing thresholds.
@@ -58,10 +109,10 @@ reset when the keyboard closes. No nested scrolling container is introduced.
 - `tests/fixtures/research-mobile.html`: development-only browser test harness.
 - `docs/MOBILE_QA.md`: this report and physical-device checklist.
 
-No changes were made to research data/scenarios, storage/export, session flow,
+The original mobile-only pass made no changes to research data/scenarios, storage/export, session flow,
 training intro views, metric formulas, profile rendering, or the main 3-by-2
-category grid. Category selection additionally accepts training attempts; main
-Flat selection is still blocked. AST comparison with `main` confirms these
+category grid. Category selection now accepts Hybrid training attempts only;
+Flat selection is blocked. AST comparison with `main` confirms these
 workspace functions are unchanged:
 `setsEqual`, `buildAttempt`, `submitTask`, `abandonTask`, `updateQuery`,
 `addIngredient`, `removeCategory`.
@@ -93,7 +144,7 @@ Screenshots and QA exports are outside Git under
 participant ID `QA_MOBILE_ONLY`; never include them in participant analysis.
 The fixture is not an entry point of the production build.
 
-## Training And Source Follow-Up
+## Earlier Training And Source Follow-Up
 
 - Four additional rendering regressions pass: three training groups for both
   starting conditions, the training title, main Flat without categories, main
