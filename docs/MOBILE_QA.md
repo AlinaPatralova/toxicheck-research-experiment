@@ -15,9 +15,17 @@ Category exclusions, overlapping category sources, independent manual sources,
 and restoration remain handled by the existing provenance model.
 
 The normal instruction and fixed instruction are two presentations of the
-same scenario. Only one is visible/accessibility-exposed at a time. The fixed
-version omits the disclosure; the normal version preserves its expanded state.
-The source composition is not the gold profile.
+same scenario. Only one is visible/accessibility-exposed at a time. Both
+include the source disclosure, sharing one expanded/collapsed state. Search,
+scrolling and keyboard activation do not collapse an expanded source list;
+the visible copy remains interactive. The source composition is not the gold
+profile.
+
+Training is titled "Тренировочное задание" rather than the target group name.
+All three isolated training groups are available regardless of the first
+experimental condition. Main Flat tasks still have no category controls;
+main Hybrid tasks retain their existing six choices. Training instructions,
+ingredients and gold profile are unchanged.
 
 Keyboard detection combines an editable search field, touch capability, a
 substantial viewport reduction, and separate opening/closing thresholds.
@@ -45,18 +53,22 @@ reset when the keyboard closes. No nested scrolling container is introduced.
   keyboard heuristics, instruction position, and search visibility.
 - `tests/researchProfile.test.mjs`: extra toggle/provenance regressions.
 - `tests/researchViewport.test.mjs`: keyboard and short-result geometry tests.
+- `tests/researchWorkspace.test.mjs`: rendered training title/group controls,
+  unchanged main-condition category availability and both disclosure copies.
 - `tests/fixtures/research-mobile.html`: development-only browser test harness.
 - `docs/MOBILE_QA.md`: this report and physical-device checklist.
 
 No changes were made to research data/scenarios, storage/export, session flow,
-training views, metric formulas, profile rendering, or the 3-by-2 category grid.
-AST comparison with `main` confirms these workspace functions are unchanged:
+training intro views, metric formulas, profile rendering, or the main 3-by-2
+category grid. Category selection additionally accepts training attempts; main
+Flat selection is still blocked. AST comparison with `main` confirms these
+workspace functions are unchanged:
 `setsEqual`, `buildAttempt`, `submitTask`, `abandonTask`, `updateQuery`,
-`addIngredient`, `addCategory`, `removeCategory`.
+`addIngredient`, `removeCategory`.
 
 ## Checks Performed
 
-- `npm run check`: secret/file hygiene, lint, 32 passing tests, type check,
+- `npm run check`: secret/file hygiene, lint, 36 passing tests, type check,
   production build, and production-service isolation scan.
 - Browser at 390 x 844: compact workspace, expanded source composition,
   scrolling, one visible instruction, fixed footer approximately 91 px high,
@@ -80,6 +92,23 @@ Screenshots and QA exports are outside Git under
 `../outputs/research-mobile-20261019/`. All harness events use the test-only
 participant ID `QA_MOBILE_ONLY`; never include them in participant analysis.
 The fixture is not an entry point of the production build.
+
+## Training And Source Follow-Up
+
+- Four additional rendering regressions pass: three training groups for both
+  starting conditions, the training title, main Flat without categories, main
+  Hybrid with six categories, and the controlled disclosure in both copies.
+- Browser training beginning in Flat: all three groups can be selected and
+  removed. Group 2 plus E300 still yields `exact_success: true` with
+  `actual_profile: [E300, E330, E331]` and `is_training: true`.
+- Flat T1 source stays expanded before/during/after simulated keyboard use;
+  closing/reopening the pinned disclosure synchronizes both copies.
+- Hybrid T3 at 320 x 740 with simulated viewport offset 80: expanded source
+  stays visible; the E214 result ends at 416 px, above the simulated keyboard
+  edge at 420 px. No horizontal overflow was observed.
+- Screenshots and test-only exports for this follow-up are outside Git under
+  `../outputs/research-followup-20261020/`. Keyboard pictures are simulations,
+  not screenshots of a physical Android keyboard.
 
 ## Not Yet Verified On Physical Devices
 

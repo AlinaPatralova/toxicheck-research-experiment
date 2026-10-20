@@ -34,6 +34,9 @@ const searchCount = ref(0);
 const addCount = ref(0);
 const removeCount = ref(0);
 const correctionsCount = ref(0);
+const compositionOpen = ref(false);
+const taskTitle = computed(() => props.isTraining ? 'Тренировочное задание' : props.scenario.categoryName);
+const canSelectCategories = computed(() => props.isTraining || props.condition === 'hybrid');
 const workspace = ref<HTMLElement | null>(null);
 const conditionBlock = ref<HTMLElement | null>(null);
 const pinnedInstruction = ref<HTMLElement | null>(null);
@@ -137,7 +140,7 @@ function removeIngredient(id: string, origin: 'catalog' | 'profile' = 'profile')
 
 function addCategory(id: string): void {
   const category = availableCategories.value.find((item) => item.id === id);
-  if (props.condition !== 'hybrid' || !category || !selectCategory(id)) return;
+  if (!canSelectCategories.value || !category || !selectCategory(id)) return;
   logEvent('category_select', id, { category: category.name });
   noteAction();
   addCount.value += 1;
@@ -222,7 +225,12 @@ function abandonTask(): void {
       :aria-hidden="instructionPinned"
       :inert="instructionPinned"
     >
-      <ResearchTaskCard :scenario="scenario" compact />
+      <ResearchTaskCard
+        v-model:composition-open="compositionOpen"
+        :scenario="scenario"
+        :title="taskTitle"
+        compact
+      />
     </div>
     <div
       ref="pinnedInstruction"
@@ -230,13 +238,19 @@ function abandonTask(): void {
       :class="{ 'research-workspace__pinned--visible': instructionPinned }"
       :aria-hidden="!instructionPinned"
     >
-      <ResearchTaskCard :scenario="scenario" compact pinned />
+      <ResearchTaskCard
+        v-model:composition-open="compositionOpen"
+        :scenario="scenario"
+        :title="taskTitle"
+        compact
+        pinned
+      />
     </div>
 
     <ResearchProfile :ingredients="selectedIngredients" @remove="removeIngredient" />
 
     <ResearchCategory
-      v-if="condition === 'hybrid'"
+      v-if="canSelectCategories"
       :categories="availableCategories"
       :selected-ids="selectedCategoryIds"
       :counts="categoryCounts"
@@ -305,6 +319,7 @@ function abandonTask(): void {
 
 .research-workspace__pinned--visible {
   visibility: visible;
+  pointer-events: auto;
 }
 
 .research-workspace__actions {

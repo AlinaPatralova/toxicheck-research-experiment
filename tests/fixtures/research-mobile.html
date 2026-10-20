@@ -19,7 +19,7 @@
   <body>
     <aside id="qa-controls" aria-label="QA controls">
       <label>Condition <select id="qa-condition"><option value="hybrid">Hybrid</option><option value="flat">Flat</option></select></label>
-      <label>Scenario <select id="qa-scenario"><option>T3-S2</option><option>T3-S1</option><option>T1-S1</option><option>T1-S2</option><option>T2-S1</option><option>T2-S2</option></select></label>
+      <label>Scenario <select id="qa-scenario"><option>T3-S2</option><option>T3-S1</option><option>T1-S1</option><option>T1-S2</option><option>T2-S1</option><option>T2-S2</option><option>TRAINING-1</option></select></label>
       <label>Viewport offset <select id="qa-offset"><option value="0">0</option><option value="80">80</option></select></label>
       <button id="qa-open-keyboard">Simulate keyboard viewport</button>
       <button id="qa-hide-controls">Hide QA controls (Alt+Q to restore)</button>
@@ -36,7 +36,7 @@
       import { createApp, h, ref } from 'vue';
       import '/src/style.css';
       import ResearchWorkspace from '/src/research/components/ResearchWorkspace.vue';
-      import { getResearchScenario } from '/src/research/data/scenarios.ts';
+      import { getResearchScenario, trainingScenario } from '/src/research/data/scenarios.ts';
       import { getResearchExportPayload } from '/src/research/services/researchStorage.ts';
 
       const nativeViewport = window.visualViewport;
@@ -66,8 +66,9 @@
       createApp({
         setup: () => () => h(ResearchWorkspace, {
           key: revision.value, session, condition: condition.value,
-          scenario: getResearchScenario(scenarioId.value), startedAtMs: startedAt,
-          progressLabel: 'Задание 6 из 6',
+          scenario: scenarioId.value === 'TRAINING-1' ? trainingScenario : getResearchScenario(scenarioId.value),
+          isTraining: scenarioId.value === 'TRAINING-1', startedAtMs: startedAt,
+          progressLabel: scenarioId.value === 'TRAINING-1' ? 'Тренировка' : 'Задание 6 из 6',
           onComplete: (attempt) => { attempts.push(attempt); showExport(); },
         }),
       }).mount('#app');

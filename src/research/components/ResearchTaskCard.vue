@@ -4,9 +4,18 @@ import type { ResearchScenario } from '../researchTypes';
 
 const props = defineProps<{
   scenario: ResearchScenario;
+  title?: string;
   compact?: boolean;
   pinned?: boolean;
+  compositionOpen?: boolean;
 }>();
+
+const emit = defineEmits<{ 'update:compositionOpen': [open: boolean] }>();
+
+function updateComposition(event: Event): void {
+  const open = (event.currentTarget as HTMLDetailsElement).open;
+  if (open !== Boolean(props.compositionOpen)) emit('update:compositionOpen', open);
+}
 </script>
 
 <template>
@@ -19,14 +28,19 @@ const props = defineProps<{
     </p>
 
     <component :is="compact ? 'h1' : 'h2'" class="task-card__title">
-      {{ props.scenario.categoryName }}
+      {{ props.title ?? props.scenario.categoryName }}
     </component>
 
     <p class="task-card__requirement">
       {{ props.scenario.requirement }}
     </p>
 
-    <details v-if="compact && !pinned" class="task-card__composition">
+    <details
+      v-if="compact"
+      class="task-card__composition"
+      :open="compositionOpen"
+      @toggle="updateComposition"
+    >
       <summary>Исходный состав</summary>
       <ul class="task-card__list">
         <li
