@@ -98,7 +98,7 @@ test('normal and pinned instructions both render the controlled source disclosur
       assert.equal(details.length, 1);
       assert.equal(Boolean(attribute(details[0], 'open')), compositionOpen);
       assert.equal(elements(html, 'li').length, scenario.categoryIngredientIds.length);
-      assert.equal(elements(html, 'summary')[0].children[0].content, 'Состав группы');
+      assert.equal(elements(html, 'summary')[0].children[0].content, 'Исходный состав группы');
     }
   }
 });
@@ -123,14 +123,27 @@ test('all six tasks and training use identical instructions across both conditio
       }
       assert.equal(elements(intro, 'details').length, 0);
       assert.equal(elements(intro, 'li').length, scenario.categoryIngredientIds.length);
-      assert.ok(elements(intro, 'ul').some((node) => attribute(node, 'aria-label')?.value?.content === 'Состав группы'));
-      for (const details of elements(workspace, 'details')) assert.ok(!attribute(details, 'open'));
+      assert.ok(elements(intro, 'ul').some((node) => attribute(node, 'aria-label')?.value?.content === 'Исходный состав группы'));
+      const card = elements(intro, 'section').find((node) =>
+        attribute(node, 'class')?.value?.content.split(' ').includes('task-card'));
+      const captionIndex = card.children.findIndex((node) => node.type === 1 && node.tag === 'h3');
+      const listIndex = card.children.findIndex((node) => node.type === 1 && node.tag === 'ul');
+      assert.ok(captionIndex >= 0 && captionIndex < listIndex);
+      assert.equal(card.children[captionIndex].children[0].content, 'Исходный состав группы');
+      const sourceCodes = card.children[listIndex].children.filter((node) => node.type === 1 && node.tag === 'li')
+        .map((node) => node.children.find((child) => child.type === 1 && child.tag === 'span').children[0].content);
+      assert.deepEqual(sourceCodes, scenario.categoryIngredientIds);
+      for (const details of elements(workspace, 'details')) {
+        assert.ok(!attribute(details, 'open'));
+        const summary = details.children.find((node) => node.type === 1 && node.tag === 'summary');
+        assert.equal(summary.children[0].content, 'Исходный состав группы');
+      }
     }
   }
 });
 
 test('every main and training pre-start card has the exact same approved copy in Flat and Hybrid', async () => {
-  const expected = 'Ознакомьтесь с условием задания и составом группы. Во время выполнения список ингредиентов можно посмотреть повторно: нажмите Состав группы, чтобы раскрыть его. Запоминать ингредиенты не требуется. Отсчёт времени начнётся после нажатия Начать задание.';
+  const expected = 'Ознакомьтесь с условием задания и составом группы. Во время выполнения список ингредиентов можно посмотреть повторно: нажмите Исходный состав группы, чтобы раскрыть его. Запоминать ингредиенты не требуется. Отсчёт времени начнётся после нажатия Начать задание.';
   for (const condition of ['flat', 'hybrid']) {
     for (const scenario of [...scenarios.researchScenarios, scenarios.trainingScenario]) {
       const training = scenario === scenarios.trainingScenario;
