@@ -10,6 +10,7 @@ let server;
 let Workspace;
 let TaskCard;
 let TaskIntro;
+let Training;
 let scenarios;
 
 before(async () => {
@@ -23,6 +24,7 @@ before(async () => {
   ({ default: Workspace } = await server.ssrLoadModule('/src/research/components/ResearchWorkspace.vue'));
   ({ default: TaskCard } = await server.ssrLoadModule('/src/research/components/ResearchTaskCard.vue'));
   ({ default: TaskIntro } = await server.ssrLoadModule('/src/research/views/ResearchTaskIntroView.vue'));
+  ({ default: Training } = await server.ssrLoadModule('/src/research/views/ResearchTrainingView.vue'));
   scenarios = await server.ssrLoadModule('/src/research/data/scenarios.ts');
 });
 
@@ -123,8 +125,27 @@ test('all six tasks and training use identical instructions across both conditio
       assert.equal(elements(intro, 'li').length, scenario.categoryIngredientIds.length);
       assert.ok(elements(intro, 'ul').some((node) => attribute(node, 'aria-label')?.value?.content === 'Состав группы'));
       for (const details of elements(workspace, 'details')) assert.ok(!attribute(details, 'open'));
-      assert.ok(intro.includes('Ознакомьтесь с заданием и составом группы. Во время выполнения состав можно открыть повторно — запоминать ингредиенты не нужно.'));
-      assert.ok(intro.includes('Время начнёт отсчитываться после нажатия „Начать задание“.'));
+    }
+  }
+});
+
+test('every main and training pre-start card has the exact same approved copy in Flat and Hybrid', async () => {
+  const expected = 'Ознакомьтесь с условием задания и составом группы. Во время выполнения список ингредиентов можно посмотреть повторно: нажмите Состав группы, чтобы раскрыть его. Запоминать ингредиенты не требуется. Отсчёт времени начнётся после нажатия Начать задание.';
+  for (const condition of ['flat', 'hybrid']) {
+    for (const scenario of [...scenarios.researchScenarios, scenarios.trainingScenario]) {
+      const training = scenario === scenarios.trainingScenario;
+      const html = await renderToString(createSSRApp(training ? Training : TaskIntro, {
+        session: { participantId: 'QA_SSR_ONLY', sequenceId: 'A' },
+        condition, ...(training ? {} : { scenario, progressLabel: 'QA' }),
+      }));
+      const card = elements(html, 'section').find((node) =>
+        attribute(node, 'class')?.value?.content.split(' ').includes(training ? 'training__card' : 'task-intro__card'));
+      assert.ok(card);
+      const heading = card.children.find((node) => node.type === 1 && node.tag === 'h2');
+      assert.equal(heading.children.map((node) => node.content ?? '').join(''), 'Перед стартом');
+      const text = card.children.filter((node) => node.type === 1 && node.tag === 'p')
+        .flatMap((node) => node.children.map((child) => child.content ?? '')).join(' ').replace(/\s+/g, ' ').trim();
+      assert.equal(text, expected);
     }
   }
 });
