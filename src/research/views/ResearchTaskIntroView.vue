@@ -102,6 +102,10 @@ onMounted(() => {
   line-height: 1.5;
 }
 
+.task-intro__card p + p {
+  margin-top: 12px;
+}
+
 .task-intro :deep(.task-card) {
   padding: 12px 14px;
 }

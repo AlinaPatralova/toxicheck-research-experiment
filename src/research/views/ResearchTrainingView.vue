@@ -69,6 +69,8 @@ function completeTraining(attempt: ResearchAttemptRecord): void {
       <p>
         Ознакомьтесь с условием задания и составом группы.
         Во время выполнения список ингредиентов можно посмотреть повторно: нажмите Состав группы, чтобы раскрыть его. Запоминать ингредиенты не требуется.
+      </p>
+      <p>
         Отсчёт времени начнётся после нажатия Начать задание.
       </p>
     </section>
@@ -140,6 +142,10 @@ function completeTraining(attempt: ResearchAttemptRecord): void {
   color: #66736e;
   font-size: 14px;
   line-height: 1.55;
+}
+
+.training__card p + p {
+  margin-top: 12px;
 }
 
 .training__button {

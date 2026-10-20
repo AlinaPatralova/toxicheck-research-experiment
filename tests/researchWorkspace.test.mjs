@@ -143,7 +143,10 @@ test('every main and training pre-start card has the exact same approved copy in
       assert.ok(card);
       const heading = card.children.find((node) => node.type === 1 && node.tag === 'h2');
       assert.equal(heading.children.map((node) => node.content ?? '').join(''), 'Перед стартом');
-      const text = card.children.filter((node) => node.type === 1 && node.tag === 'p')
+      const paragraphs = card.children.filter((node) => node.type === 1 && node.tag === 'p');
+      assert.equal(paragraphs.length, 2);
+      assert.equal(paragraphs[1].children.map((node) => node.content ?? '').join('').trim(), 'Отсчёт времени начнётся после нажатия Начать задание.');
+      const text = paragraphs
         .flatMap((node) => node.children.map((child) => child.content ?? '')).join(' ').replace(/\s+/g, ' ').trim();
       assert.equal(text, expected);
     }
