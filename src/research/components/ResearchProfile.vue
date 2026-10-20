@@ -52,12 +52,12 @@ const emit = defineEmits<{ remove: [id: string] }>();
 .profile__list,
 .profile__empty {
   margin: 6px 0 0;
-  border: 1px solid #dfe6e3;
-  border-radius: 6px;
 }
 
 .profile__list {
   padding: 0 8px;
+  border: 1px solid #dfe6e3;
+  border-radius: 6px;
   list-style: none;
 }
 
