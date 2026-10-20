@@ -47,6 +47,14 @@ test('training group selection preserves multiple sources and the previous gold 
 });
 
 test('new instructions retain all task goals, sizes, and counterbalancing', () => {
+  const expectedRequirements = {
+    'T1-S1': 'Включите в профиль все ингредиенты группы Бензоаты, кроме E212 — бензоата калия',
+    'T1-S2': 'Включите в профиль все ингредиенты группы Пропионаты, кроме E282 — пропионата кальция',
+    'T2-S1': 'Включите в профиль все ингредиенты группы Гуанилаты, а также E951 — аспартам',
+    'T2-S2': 'Включите в профиль все ингредиенты группы Инозинаты, а также E950 — ацесульфам калия',
+    'T3-S1': 'Включите в профиль все ингредиенты группы Сорбаты, кроме E202 — сорбата калия. Дополнительно включите E320 — BHA',
+    'T3-S2': 'Включите в профиль все ингредиенты группы Парабены, кроме E218 — метилпарабена. Дополнительно включите E321 — BHT'
+  };
   const expectedGold = {
     'T1-S1': ['E210', 'E211', 'E213'],
     'T1-S2': ['E280', 'E281', 'E283'],
@@ -59,13 +67,10 @@ test('new instructions retain all task goals, sizes, and counterbalancing', () =
     assert.deepEqual(scenario.goldProfile, expectedGold[scenario.id]);
     assert.equal(scenario.profileSize, expectedGold[scenario.id].length);
     assert.equal(scenario.modificationsCount, scenario.taskType === 'combined' ? 2 : 1);
-    assert.ok(scenario.requirement.startsWith('Выберите '));
-    assert.ok(!scenario.requirement.includes('Ограничьте'));
-    if (scenario.taskType === 'exclusion') assert.match(scenario.requirement, /, исключив /);
-    if (scenario.taskType === 'addition') assert.match(scenario.requirement, / и добавьте /);
-    if (scenario.taskType === 'combined') assert.match(scenario.requirement, /, исключите .+ и добавьте /);
+    assert.equal(scenario.requirement, expectedRequirements[scenario.id]);
+    assert.doesNotMatch(scenario.requirement, /[«»„“”"]|Выберите|Ограничьте/);
   }
-  assert.equal(scenarios.trainingScenario.requirement, 'Выберите группу 2 и добавьте E300 - аскорбиновую кислоту.');
+  assert.equal(scenarios.trainingScenario.requirement, 'Включите в профиль все ингредиенты тренировочной группы 2, а также E300 — аскорбиновую кислоту');
   for (const sequence of ['A', 'B', 'C', 'D']) {
     const tasks = scenarios.getTasksForSequence(sequence);
     assert.equal(tasks.length, 6);

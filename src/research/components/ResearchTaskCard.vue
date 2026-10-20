@@ -41,7 +41,7 @@ function updateComposition(event: Event): void {
       :open="compositionOpen"
       @toggle="updateComposition"
     >
-      <summary>Исходный состав</summary>
+      <summary>Состав группы</summary>
       <ul class="task-card__list">
         <li
           v-for="ingredient in getIngredientsByIds(props.scenario.categoryIngredientIds)"
@@ -54,7 +54,7 @@ function updateComposition(event: Event): void {
       </ul>
     </details>
 
-    <ul v-else-if="!compact" class="task-card__list" aria-label="Исходный состав категории">
+    <ul v-else-if="!compact" class="task-card__list" aria-label="Состав группы">
       <li
         v-for="ingredient in getIngredientsByIds(props.scenario.categoryIngredientIds)"
         :key="ingredient.id"
