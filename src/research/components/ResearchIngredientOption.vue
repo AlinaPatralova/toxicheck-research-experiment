@@ -2,7 +2,7 @@
 import { Check, Plus } from 'lucide-vue-next';
 import type { ResearchIngredient } from '../researchTypes';
 
-defineProps<{ ingredient: ResearchIngredient; selected: boolean; manual: boolean }>();
+defineProps<{ ingredient: ResearchIngredient; selected: boolean }>();
 const emit = defineEmits<{ add: [id: string]; remove: [id: string] }>();
 </script>
 
@@ -11,12 +11,11 @@ const emit = defineEmits<{ add: [id: string]; remove: [id: string] }>();
     type="button"
     class="ingredient-option"
     :class="{ 'ingredient-option--selected': selected }"
-    :disabled="selected && !manual"
     :aria-pressed="selected"
-    :aria-label="ingredient.code + ' ' + ingredient.name + (manual ? ' - снять ручной выбор' : selected ? ' - добавлено через категорию' : ' - добавить')"
-    :title="manual ? 'Снять ручной выбор' : selected ? 'Добавлено через категорию' : 'Добавить в профиль'"
+    :aria-label="ingredient.code + ' ' + ingredient.name + (selected ? ' - удалить из профиля' : ' - добавить')"
+    :title="selected ? 'Удалить из профиля' : 'Добавить в профиль'"
     :data-ingredient-id="ingredient.id"
-    @click="manual ? emit('remove', ingredient.id) : emit('add', ingredient.id)"
+    @click="selected ? emit('remove', ingredient.id) : emit('add', ingredient.id)"
   >
     <span class="ingredient-option__code">{{ ingredient.code }}</span>
     <span class="ingredient-option__name">{{ ingredient.name }}</span>
@@ -51,10 +50,6 @@ const emit = defineEmits<{ add: [id: string]; remove: [id: string] }>();
 .ingredient-option--selected {
   color: #66736e;
   opacity: 1;
-}
-
-.ingredient-option:disabled {
-  cursor: default;
 }
 
 .ingredient-option:focus-visible {

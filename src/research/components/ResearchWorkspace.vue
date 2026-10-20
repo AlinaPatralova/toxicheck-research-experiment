@@ -8,6 +8,7 @@ import ResearchTaskCard from './ResearchTaskCard.vue';
 import { researchPickerCategories, trainingCategories } from '../data/categories';
 import { getIngredientOrFallback, getIngredientsByIds, researchIngredients } from '../data/ingredients';
 import { useResearchProfile } from '../composables/useResearchProfile';
+import { useResearchViewport } from '../composables/useResearchViewport';
 import type {
   ResearchAttemptRecord,
   ResearchCondition,
@@ -33,6 +34,13 @@ const searchCount = ref(0);
 const addCount = ref(0);
 const removeCount = ref(0);
 const correctionsCount = ref(0);
+const workspace = ref<HTMLElement | null>(null);
+const conditionBlock = ref<HTMLElement | null>(null);
+const pinnedInstruction = ref<HTMLElement | null>(null);
+const searchBlock = ref<HTMLElement | null>(null);
+const { keyboardOpen, instructionPinned, viewportStyle } = useResearchViewport(
+  workspace, conditionBlock, pinnedInstruction, searchBlock,
+);
 
 const availableCategories = computed(() => props.isTraining
   ? trainingCategories
@@ -43,7 +51,6 @@ const availableIngredients = computed(() => props.isTraining
   : researchIngredients);
 
 const {
-  manualIngredientIds,
   selectedCategoryIds,
   profileIds,
   provenance,
@@ -51,7 +58,6 @@ const {
   selectCategory,
   deselectCategory,
   addManualIngredient,
-  removeManualIngredient,
   removeProfileIngredient
 } = useResearchProfile(() => availableCategories.value);
 const selectedIngredients = computed(() => getIngredientsByIds(profileIds.value));
@@ -109,30 +115,22 @@ function addIngredient(id: string): void {
   }
 }
 
-function removeManualSelection(id: string): void {
-  if (!removeManualIngredient(id)) return;
+function removeIngredient(id: string, origin: 'catalog' | 'profile' = 'profile'): void {
+  const sources = removeProfileIngredient(id);
+  if (!sources) return;
   noteAction();
   removeCount.value += 1;
   correctionsCount.value += 1;
   logEvent('ingredient_remove', id, {
     ingredient: getIngredientOrFallback(id),
-    source: 'catalog',
-    remains_in_profile: profileIds.value.includes(id)
+    source: origin,
+    ...(origin === 'catalog' ? { remains_in_profile: false } : {}),
   });
-}
-
-function removeIngredient(id: string): void {
-  const source = removeProfileIngredient(id);
-  if (!source) return;
-  noteAction();
-  removeCount.value += 1;
-  correctionsCount.value += 1;
-  logEvent('ingredient_remove', id, { ingredient: getIngredientOrFallback(id), source: 'profile' });
-  if (source.categoryIds.length) {
+  if (sources.categoryIds.length) {
     logEvent('category_item_exclude', id, {
       ingredient: getIngredientOrFallback(id),
-      source: 'profile',
-      category_ids: source.categoryIds
+      source: origin,
+      category_ids: sources.categoryIds
     });
   }
 }
@@ -215,15 +213,25 @@ function abandonTask(): void {
 </script>
 
 <template>
-  <main class="research-workspace">
-    <header class="research-workspace__header">
-      <div>
-        <p class="research-workspace__eyebrow">{{ progressLabel }}</p>
-        <h1>Формирование профиля</h1>
-      </div>
-    </header>
+  <main ref="workspace" class="research-workspace" :style="viewportStyle">
+    <p class="research-workspace__eyebrow">{{ progressLabel }}</p>
 
-    <ResearchTaskCard :scenario="scenario" compact />
+    <div
+      ref="conditionBlock"
+      :class="{ 'research-workspace__condition--hidden': instructionPinned }"
+      :aria-hidden="instructionPinned"
+      :inert="instructionPinned"
+    >
+      <ResearchTaskCard :scenario="scenario" compact />
+    </div>
+    <div
+      ref="pinnedInstruction"
+      class="research-workspace__pinned"
+      :class="{ 'research-workspace__pinned--visible': instructionPinned }"
+      :aria-hidden="!instructionPinned"
+    >
+      <ResearchTaskCard :scenario="scenario" compact pinned />
+    </div>
 
     <ResearchProfile :ingredients="selectedIngredients" @remove="removeIngredient" />
 
@@ -236,18 +244,19 @@ function abandonTask(): void {
       @remove="removeCategory"
     />
 
-    <ResearchIngredientSearch
-      :model-value="query"
-      :ingredients="availableIngredients"
-      :selected-ids="profileIds"
-      :manual-ids="manualIngredientIds"
-      @update:model-value="updateQuery"
-      @add="addIngredient"
-      @remove="removeManualSelection"
-      @browse="browseIngredients"
-    />
+    <div ref="searchBlock">
+      <ResearchIngredientSearch
+        :model-value="query"
+        :ingredients="availableIngredients"
+        :selected-ids="profileIds"
+        @update:model-value="updateQuery"
+        @add="addIngredient"
+        @remove="removeIngredient($event, 'catalog')"
+        @browse="browseIngredients"
+      />
+    </div>
 
-    <div class="research-workspace__actions">
+    <div v-show="!keyboardOpen" class="research-workspace__actions">
       <button type="button" class="research-button" @click="submitTask">
         <Check aria-hidden="true" />
         <span>Подтвердить профиль</span>
@@ -266,49 +275,48 @@ function abandonTask(): void {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: 14px;
+  gap: 10px;
   min-height: 100dvh;
-  padding: 24px 24px calc(152px + env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(108px + var(--research-keyboard-space, 0px) + env(safe-area-inset-bottom, 0px));
   color: #17201d;
   background-color: #f6f8f7;
 }
 
-.research-workspace__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.research-workspace__header > div {
-  min-width: 0;
-}
-
 .research-workspace__eyebrow {
-  margin: 0 0 4px;
-  color: #66736e;
-  font-size: 13px;
-}
-
-.research-workspace h1 {
   margin: 0;
-  color: #17201d;
-  font-size: 24px;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
+  color: #66736e;
+  font-size: 12px;
 }
 
+.research-workspace__condition--hidden {
+  visibility: hidden;
+}
+
+.research-workspace__pinned {
+  position: fixed;
+  top: 0;
+  left: var(--research-app-left, 0px);
+  z-index: 6;
+  width: var(--research-app-width, 100%);
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(var(--research-viewport-top, 0px));
+}
+
+.research-workspace__pinned--visible {
+  visibility: visible;
+}
 
 .research-workspace__actions {
   position: fixed;
   bottom: 0;
-  left: 0;
+  left: var(--research-app-left, 0px);
   z-index: 10;
   display: grid;
-  gap: 8px;
-  width: 100%;
+  gap: 2px;
+  width: var(--research-app-width, 100%);
   max-width: 480px;
-  padding: 12px 24px calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 16px calc(6px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid #dfe6e3;
   background: #ffffff;
 }
@@ -319,8 +327,8 @@ function abandonTask(): void {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  min-height: 52px;
-  padding: 0 16px;
+  min-height: 48px;
+  padding: 0 12px;
   border: 0;
   border-radius: 12px;
   color: #ffffff;
@@ -332,10 +340,11 @@ function abandonTask(): void {
 }
 
 .research-button--ghost {
-  min-height: 44px;
+  min-height: 28px;
+  padding: 2px 0;
   color: #66736e;
   background: transparent;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -345,23 +354,20 @@ function abandonTask(): void {
   stroke-width: 2.4;
 }
 
+.research-button--ghost svg {
+  width: 14px;
+  height: 14px;
+}
+
 @media (max-width: 360px) {
   .research-workspace {
-    padding-right: 16px;
-    padding-left: 16px;
-  }
-
-  .research-workspace__header {
-    align-items: flex-start;
-  }
-
-  .research-workspace h1 {
-    font-size: 20px;
+    padding-right: 12px;
+    padding-left: 12px;
   }
 
   .research-workspace__actions {
-    padding-right: 16px;
-    padding-left: 16px;
+    padding-right: 12px;
+    padding-left: 12px;
   }
 }
 </style>

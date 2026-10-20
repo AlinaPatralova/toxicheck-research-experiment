@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <title>Research mobile QA: simulated viewport, not a device test</title>
+    <style>
+      #qa-controls { position: fixed; z-index: 100; top: 8px; right: 8px; padding: 8px; width: 230px; background: white; border: 1px solid #999; font: 12px sans-serif; }
+      #qa-controls label, #qa-controls button { display: block; margin: 5px 0; }
+      #qa-controls select { max-width: 100%; }
+      #qa-keyboard { position: fixed; z-index: 90; bottom: 0; left: 0; width: min(480px, 100%); height: 320px; padding: 24px; background: #e1e5e8; color: #38454c; font: 14px/1.5 sans-serif; }
+      #qa-keyboard[hidden], #qa-controls[hidden], #qa-export[hidden] { display: none; }
+      #qa-export { position: fixed; inset: 0; z-index: 110; overflow: auto; padding: 16px; background: white; color: black; white-space: pre-wrap; font: 12px/1.5 monospace; }
+    </style>
+  </head>
+  <body>
+    <aside id="qa-controls" aria-label="QA controls">
+      <label>Condition <select id="qa-condition"><option value="hybrid">Hybrid</option><option value="flat">Flat</option></select></label>
+      <label>Scenario <select id="qa-scenario"><option>T3-S2</option><option>T3-S1</option><option>T1-S1</option><option>T1-S2</option><option>T2-S1</option><option>T2-S2</option></select></label>
+      <label>Viewport offset <select id="qa-offset"><option value="0">0</option><option value="80">80</option></select></label>
+      <button id="qa-open-keyboard">Simulate keyboard viewport</button>
+      <button id="qa-hide-controls">Hide QA controls (Alt+Q to restore)</button>
+      <button id="qa-show-export">Show QA export</button>
+    </aside>
+    <div id="qa-keyboard" hidden>
+      <strong>Keyboard viewport simulation</strong>
+      <p>This is not a real Android or iOS keyboard. The visual viewport is reduced by 320 px.</p>
+      <button id="qa-close-keyboard">Close simulated keyboard</button>
+    </div>
+    <pre id="qa-export" aria-label="QA export" hidden></pre>
+    <div id="app"></div>
+    <script type="module">
+      import { createApp, h, ref } from 'vue';
+      import '/src/style.css';
+      import ResearchWorkspace from '/src/research/components/ResearchWorkspace.vue';
+      import { getResearchScenario } from '/src/research/data/scenarios.ts';
+      import { getResearchExportPayload } from '/src/research/services/researchStorage.ts';
+
+      const nativeViewport = window.visualViewport;
+      const viewportEvents = new EventTarget();
+      let simulated = false;
+      let offset = 0;
+      Object.defineProperties(viewportEvents, {
+        height: { get: () => simulated ? Math.max(180, window.innerHeight - 320 - offset) : (nativeViewport?.height ?? window.innerHeight) },
+        width: { get: () => nativeViewport?.width ?? window.innerWidth },
+        scale: { get: () => nativeViewport?.scale ?? 1 },
+        offsetTop: { get: () => simulated ? offset : (nativeViewport?.offsetTop ?? 0) },
+      });
+      Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewportEvents });
+      const nativeMatchMedia = window.matchMedia.bind(window);
+      window.matchMedia = (query) => query === '(any-pointer: coarse)' ? { matches: true } : nativeMatchMedia(query);
+
+      const condition = ref('hybrid');
+      const scenarioId = ref('T3-S2');
+      const revision = ref(0);
+      const attempts = [];
+      const session = {
+        participantId: 'QA_MOBILE_ONLY', sequenceId: 'A', stage: 'task',
+        createdAt: new Date().toISOString(), currentTaskIndex: 0,
+        activeTaskStartedAt: new Date().toISOString(), lastAttemptId: null,
+      };
+      const startedAt = Date.now();
+      createApp({
+        setup: () => () => h(ResearchWorkspace, {
+          key: revision.value, session, condition: condition.value,
+          scenario: getResearchScenario(scenarioId.value), startedAtMs: startedAt,
+          progressLabel: 'Задание 6 из 6',
+          onComplete: (attempt) => { attempts.push(attempt); showExport(); },
+        }),
+      }).mount('#app');
+
+      function showExport() {
+        const output = document.querySelector('#qa-export');
+        output.textContent = JSON.stringify({ ...getResearchExportPayload(), attempts }, null, 2);
+        output.hidden = false;
+      }
+      function setKeyboard(open) {
+        simulated = open;
+        document.querySelector('#qa-keyboard').hidden = !open;
+        if (open) document.querySelector('input[type="search"]')?.focus({ preventScroll: true });
+        viewportEvents.dispatchEvent(new Event('resize'));
+      }
+      document.querySelector('#qa-open-keyboard').onclick = () => setKeyboard(true);
+      document.querySelector('#qa-close-keyboard').onclick = () => setKeyboard(false);
+      document.querySelector('#qa-hide-controls').onclick = () => { document.querySelector('#qa-controls').hidden = true; };
+      document.querySelector('#qa-show-export').onclick = showExport;
+      document.querySelector('#qa-condition').onchange = (event) => { condition.value = event.target.value; revision.value += 1; };
+      document.querySelector('#qa-scenario').onchange = (event) => { scenarioId.value = event.target.value; revision.value += 1; };
+      document.querySelector('#qa-offset').onchange = (event) => { offset = Number(event.target.value); viewportEvents.dispatchEvent(new Event('scroll')); };
+      document.addEventListener('keydown', (event) => {
+        if (event.altKey && event.key.toLowerCase() === 'q') {
+          event.preventDefault();
+          const controls = document.querySelector('#qa-controls');
+          controls.hidden = !controls.hidden;
+        }
+        if (event.key === 'Escape') document.querySelector('#qa-export').hidden = true;
+      });
+    </script>
+  </body>
+</html>

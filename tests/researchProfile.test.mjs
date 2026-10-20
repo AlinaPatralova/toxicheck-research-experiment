@@ -106,3 +106,36 @@ test('removing a manual source never excludes an ingredient from selected catego
   profile.deselectCategory('b');
   assert.deepEqual(profile.profileIds.value, []);
 });
+
+test('ingredient-list toggle excludes a category-only ingredient without deselecting the category', () => {
+  const profile = createProfile();
+  profile.selectCategory('a');
+  const removed = profile.removeProfileIngredient('E202');
+  assert.deepEqual(removed, { manual: false, categoryIds: ['a'] });
+  assert.deepEqual(profile.selectedCategoryIds.value, ['a']);
+  assert.equal(profile.categoryCounts.value.a, 3);
+  assert.ok(!profile.profileIds.value.includes('E202'));
+  assert.deepEqual(profile.addManualIngredient('E202'), ['a']);
+  assert.equal(profile.categoryCounts.value.a, 4);
+  assert.equal(profile.profileIds.value.filter((id) => id === 'E202').length, 1);
+});
+
+test('repeated final-profile toggles retain manual/category provenance and independent ingredients', () => {
+  const profile = createProfile();
+  profile.addManualIngredient('E320');
+  profile.addManualIngredient('E200');
+  profile.selectCategory('a');
+  profile.selectCategory('b');
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    profile.removeProfileIngredient('E200');
+    assert.ok(!profile.profileIds.value.includes('E200'));
+    assert.equal(profile.categoryCounts.value.a, 3);
+    assert.equal(profile.categoryCounts.value.b, 1);
+    assert.deepEqual(profile.addManualIngredient('E200'), ['a', 'b']);
+    assert.deepEqual(profile.provenance.value.E200, { manual: true, categoryIds: ['a', 'b'] });
+    assert.equal(profile.profileIds.value.filter((id) => id === 'E200').length, 1);
+  }
+  profile.deselectCategory('a');
+  profile.deselectCategory('b');
+  assert.deepEqual(profile.profileIds.value, ['E200', 'E320']);
+});

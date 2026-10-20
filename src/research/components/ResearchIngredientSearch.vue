@@ -8,7 +8,6 @@ const props = defineProps<{
   modelValue: string;
   ingredients: ResearchIngredient[];
   selectedIds: string[];
-  manualIds: string[];
 }>();
 
 const emit = defineEmits<{
@@ -19,7 +18,6 @@ const emit = defineEmits<{
 }>();
 
 const selectedIdSet = computed(() => new Set(props.selectedIds));
-const manualIdSet = computed(() => new Set(props.manualIds));
 const results = ref<HTMLElement | null>(null);
 let lastBrowseId = '';
 
@@ -84,7 +82,6 @@ onUnmounted(() => window.removeEventListener('scroll', onPageScroll));
         <ResearchIngredientOption
           :ingredient="ingredient"
           :selected="selectedIdSet.has(ingredient.id)"
-          :manual="manualIdSet.has(ingredient.id)"
           @add="emit('add', $event)"
           @remove="emit('remove', $event)"
         />
@@ -114,6 +111,9 @@ onUnmounted(() => window.removeEventListener('scroll', onPageScroll));
 }
 
 .ingredient-search__field {
+  position: sticky;
+  top: calc(var(--research-viewport-top, 0px) + var(--research-instruction-height, 0px) + 6px);
+  z-index: 3;
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -140,7 +140,12 @@ onUnmounted(() => window.removeEventListener('scroll', onPageScroll));
   color: #17201d;
   background: transparent;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
+  scroll-margin-top: calc(var(--research-instruction-height, 0px) + 12px);
+}
+
+.ingredient-search__field input::-webkit-search-cancel-button {
+  appearance: none;
 }
 
 .ingredient-search__field:focus-within {

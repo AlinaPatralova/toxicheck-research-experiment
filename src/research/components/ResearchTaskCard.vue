@@ -5,28 +5,29 @@ import type { ResearchScenario } from '../researchTypes';
 const props = defineProps<{
   scenario: ResearchScenario;
   compact?: boolean;
+  pinned?: boolean;
 }>();
 </script>
 
 <template>
   <section
     class="task-card"
-    :class="{ 'task-card--compact': compact }"
+    :class="{ 'task-card--compact': compact, 'task-card--pinned': pinned }"
   >
-    <p class="task-card__eyebrow">
+    <p v-if="!compact" class="task-card__eyebrow">
       Условие
     </p>
 
-    <h2 class="task-card__title">
+    <component :is="compact ? 'h1' : 'h2'" class="task-card__title">
       {{ props.scenario.categoryName }}
-    </h2>
+    </component>
 
     <p class="task-card__requirement">
       {{ props.scenario.requirement }}
     </p>
 
-    <details v-if="compact" class="task-card__composition">
-      <summary>Исходный состав категории</summary>
+    <details v-if="compact && !pinned" class="task-card__composition">
+      <summary>Исходный состав</summary>
       <ul class="task-card__list">
         <li
           v-for="ingredient in getIngredientsByIds(props.scenario.categoryIngredientIds)"
@@ -34,12 +35,12 @@ const props = defineProps<{
           :title="ingredient.code + ' ' + ingredient.name"
         >
           <span>{{ ingredient.code }}</span>
-          {{ ingredient.name }}
+          <span class="task-card__ingredient-name">{{ ingredient.name }}</span>
         </li>
       </ul>
     </details>
 
-    <ul v-else class="task-card__list" aria-label="Исходный состав категории">
+    <ul v-else-if="!compact" class="task-card__list" aria-label="Исходный состав категории">
       <li
         v-for="ingredient in getIngredientsByIds(props.scenario.categoryIngredientIds)"
         :key="ingredient.id"
@@ -61,12 +62,11 @@ const props = defineProps<{
 }
 
 .task-card--compact {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  padding: 12px 14px;
-  background: #f0faf6;
-  border-color: #cdece0;
+  padding: 0 0 8px;
+  border: 0;
+  border-bottom: 1px solid #dfe6e3;
+  border-radius: 0;
+  background: #f6f8f7;
 }
 
 .task-card__eyebrow {
@@ -85,7 +85,7 @@ const props = defineProps<{
 
 .task-card--compact .task-card__title {
   margin-bottom: 4px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .task-card__requirement {
@@ -96,7 +96,9 @@ const props = defineProps<{
 }
 
 .task-card--compact .task-card__requirement {
-  font-size: 12px;
+  color: #44554d;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .task-card__list {
@@ -121,35 +123,67 @@ const props = defineProps<{
 }
 
 .task-card__composition {
-  margin-top: 6px;
+  margin-top: 4px;
   color: #66736e;
   font-size: 12px;
   line-height: 18px;
 }
 
 .task-card__composition summary {
+  min-height: 28px;
+  padding: 5px 0;
   cursor: pointer;
 }
 
 .task-card__composition .task-card__list {
-  gap: 2px;
-  max-height: 200px;
-  margin: 4px 0 0;
-  overflow-y: auto;
+  gap: 0;
+  margin: 0;
 }
 
 .task-card__composition .task-card__list li {
-  overflow: hidden;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 0;
   color: #66736e;
   font-size: 11px;
-  line-height: 18px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  line-height: 20px;
 }
 
-.task-card__composition .task-card__list span {
-  min-width: 40px;
+.task-card__composition .task-card__list li > span:first-child {
+  flex: 0 0 36px;
+  min-width: 0;
   color: #66736e;
   font-weight: 600;
 }
+
+.task-card__composition .task-card__list .task-card__ingredient-name {
+  min-width: 0;
+  color: inherit;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.task-card--pinned {
+  padding: 6px 16px;
+}
+
+.task-card--pinned .task-card__title {
+  margin-bottom: 2px;
+  font-size: 14px;
+}
+
+.task-card--pinned .task-card__requirement {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+@media (max-width: 360px) {
+  .task-card--pinned {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
+
 </style>

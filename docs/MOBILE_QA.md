@@ -1,0 +1,109 @@
+# Mobile UI Verification
+
+## Scope
+
+This change belongs to `dev` in the standalone research repository. Publish
+only a `dev` preview for a physical-phone check; do not change `main` or the
+stable research deployment yet. Before pushing, verify that Vercel tracks
+`main` as the production branch for `toxicheck-research-experiment`. Do not
+merge an unverified interface into the stable main-study branch. The separate
+ToxiCheck product repository and deployment are outside this change's scope.
+
+Individual list items now toggle membership in the final profile. Both the
+list and profile removal call the existing `removeProfileIngredient` operation.
+Category exclusions, overlapping category sources, independent manual sources,
+and restoration remain handled by the existing provenance model.
+
+The normal instruction and fixed instruction are two presentations of the
+same scenario. Only one is visible/accessibility-exposed at a time. The fixed
+version omits the disclosure; the normal version preserves its expanded state.
+The source composition is not the gold profile.
+
+Keyboard detection combines an editable search field, touch capability, a
+substantial viewport reduction, and separate opening/closing thresholds.
+`visualViewport.resize` and `.scroll` account for visible height and offset;
+window resize is the fallback without VisualViewport. Focus alone does not
+hide the footer, and pinch zoom is not interpreted as keyboard activation.
+Callbacks are batched with requestAnimationFrame and cleaned up on unmount.
+
+Short search results require reserved page height to remain scrollable above
+the keyboard. Space is reclaimed at the page top rather than forcing a scroll
+reset when the keyboard closes. No nested scrolling container is introduced.
+
+## Changed Files
+
+- `src/research/components/ResearchIngredientOption.vue`: selected items remain
+  enabled and remove themselves from the final profile on a second tap.
+- `src/research/components/ResearchIngredientSearch.vue`: shared toggle wiring,
+  a sticky search field below the instruction, 16 px input text to avoid iOS
+  focus zoom, and one custom clear control.
+- `src/research/components/ResearchTaskCard.vue`: compact normal instruction,
+  compact fixed variant, closed source disclosure and 28 px source rows.
+- `src/research/components/ResearchWorkspace.vue`: compact header/footer,
+  shared removal logging with catalog/profile origins, viewport integration.
+- `src/research/composables/useResearchViewport.ts`: UI-only viewport handling,
+  keyboard heuristics, instruction position, and search visibility.
+- `tests/researchProfile.test.mjs`: extra toggle/provenance regressions.
+- `tests/researchViewport.test.mjs`: keyboard and short-result geometry tests.
+- `tests/fixtures/research-mobile.html`: development-only browser test harness.
+- `docs/MOBILE_QA.md`: this report and physical-device checklist.
+
+No changes were made to research data/scenarios, storage/export, session flow,
+training views, metric formulas, profile rendering, or the 3-by-2 category grid.
+AST comparison with `main` confirms these workspace functions are unchanged:
+`setsEqual`, `buildAttempt`, `submitTask`, `abandonTask`, `updateQuery`,
+`addIngredient`, `addCategory`, `removeCategory`.
+
+## Checks Performed
+
+- `npm run check`: secret/file hygiene, lint, 32 passing tests, type check,
+  production build, and production-service isolation scan.
+- Browser at 390 x 844: compact workspace, expanded source composition,
+  scrolling, one visible instruction, fixed footer approximately 91 px high,
+  primary action 48 px high.
+- Simulated visual viewport reduction of 320 px: visible instruction, search,
+  one result, multiple results, no results; entire footer hidden.
+- Profile of eight ingredients: four matching rows remain visible together
+  with the search field and instruction in the simulated keyboard viewport.
+- List-based Hybrid removal: 4/4 -> 3/4; restoration: 3/4 -> 4/4; no duplicates.
+- Keyboard closure preserves query, profile and measured page scroll position.
+- Three rapid simulated open/close cycles preserve state and restore footer.
+- 320 x 740 with simulated viewport offsetTop 80: instruction follows the
+  offset, search/results are not covered, no horizontal overflow.
+- Desktop 1280 x 900: focusing the search leaves the footer visible.
+- Successful browser submissions for Flat T1-S1 and Hybrid T3-S2: actual
+  profiles equal gold profiles and `exact_success` is true. Removal events
+  identify the catalog origin and retain the existing event types.
+- No browser console warnings/errors were observed during the final checks.
+
+Screenshots and QA exports are outside Git under
+`../outputs/research-mobile-20261019/`. All harness events use the test-only
+participant ID `QA_MOBILE_ONLY`; never include them in participant analysis.
+The fixture is not an entry point of the production build.
+
+## Not Yet Verified On Physical Devices
+
+**The keyboard pictures use an explicitly labelled viewport simulation. They
+are not screenshots of a real Android/iOS software keyboard.** Desktop viewport
+emulation cannot establish physical-device correctness.
+
+Before releasing a preview to study participants, check on Android Chrome:
+
+1. Open a long T3 task and the source composition; select 4-8 ingredients.
+2. Focus search and open the Russian software keyboard.
+3. Search `E214`, select a result, remove it with the check mark, and re-add it.
+4. Check category 4/4 -> 3/4 -> 4/4 and profile synchronization.
+5. Check multiple results, no results, and repeated keyboard open/close.
+6. Dismiss the keyboard with Android Back: query/profile stay intact, footer
+   returns, the page does not jump to the top, and the timer keeps running.
+7. Repeat in Telegram WebView and iPhone Safari when available.
+
+Floating or overlay-only keyboards that do not produce any viewport-size
+signal cannot be detected reliably by this heuristic. Without reliable signals
+the footer stays visible rather than treating every desktop input focus as an
+open keyboard. Physical browser/WebView behavior remains a release check.
+
+## References
+
+- [Chrome viewport resize behavior](https://developer.chrome.com/blog/viewport-resize-behavior/)
+- [VisualViewport API](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport)
