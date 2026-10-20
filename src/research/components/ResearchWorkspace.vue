@@ -6,7 +6,7 @@ import ResearchIngredientSearch from './ResearchIngredientSearch.vue';
 import ResearchProfile from './ResearchProfile.vue';
 import ResearchTaskCard from './ResearchTaskCard.vue';
 import { researchPickerCategories, trainingCategories } from '../data/categories';
-import { getIngredientOrFallback, getIngredientsByIds, researchIngredients } from '../data/ingredients';
+import { getIngredientOrFallback, getIngredientsByIds, researchIngredients, trainingIngredients } from '../data/ingredients';
 import { useResearchProfile } from '../composables/useResearchProfile';
 import { useResearchViewport } from '../composables/useResearchViewport';
 import type {
@@ -49,8 +49,7 @@ const availableCategories = computed(() => props.isTraining
   ? trainingCategories
   : researchPickerCategories);
 const availableIngredients = computed(() => props.isTraining
-  ? researchIngredients.filter((ingredient) =>
-    ingredient.categoryId === 'training-citrates' || ingredient.categoryId === 'distractors')
+  ? trainingIngredients
   : researchIngredients);
 
 const {

@@ -80,12 +80,30 @@ test('training has its own title and six groups only in Hybrid', async () => {
       : []);
     const ingredientButtons = elements(html, 'button')
       .map((button) => attribute(button, 'aria-label')?.value?.content)
-      .filter((label) => /^E\d+ /.test(label ?? ''));
+      .filter((label) => /^E\d+[a-z]? /i.test(label ?? ''));
     assert.deepEqual(ingredientButtons, [
       'E300 Аскорбиновая кислота - добавить', 'E330 Лимонная кислота - добавить', 'E331 Цитраты натрия - добавить',
       'E322 Лецитины - добавить', 'E440 Пектины - добавить', 'E500 Карбонаты натрия - добавить',
+      'E270 Молочная кислота - добавить', 'E406 Агар - добавить',
+      'E414 Гуммиарабик - добавить', 'E415 Ксантановая камедь - добавить',
+      'E296 Яблочная кислота - добавить', 'E160a Каротины - добавить',
     ]);
     assert.ok(html.includes(scenarios.trainingScenario.requirement));
+  }
+});
+
+test('main conditions retain their original 34-ingredient catalog without training additions', async () => {
+  for (const condition of ['flat', 'hybrid']) {
+    const html = await renderWorkspace(condition);
+    const labels = elements(html, 'button')
+      .map((button) => attribute(button, 'aria-label')?.value?.content)
+      .filter((label) => /^E\d+[a-z]? /i.test(label ?? ''));
+    assert.deepEqual(labels, ingredients.researchIngredients.map((ingredient) =>
+      `${ingredient.code} ${ingredient.name} - добавить`));
+    assert.equal(labels.length, 34);
+    for (const id of ['E270', 'E406', 'E414', 'E415', 'E296', 'E160a']) {
+      assert.ok(labels.every((label) => !label.startsWith(`${id} `)));
+    }
   }
 });
 
@@ -197,6 +215,27 @@ test('the shared inline search renders aliases and formatted E-codes with canoni
       const rows = elements(html, 'button')
         .map((button) => attribute(button, 'aria-label')?.value?.content)
         .filter((label) => /^E\d+ /.test(label ?? ''));
+      assert.deepEqual(rows, [`${id} ${name} - добавить`], modelValue);
+    }
+  }
+});
+
+test('new training ingredients are searchable by name and code including the E160a suffix', async () => {
+  for (const [id, name, queries] of [
+    ['E270', 'Молочная кислота', ['270', 'молочная']],
+    ['E406', 'Агар', ['E406', 'агар']],
+    ['E414', 'Гуммиарабик', ['Е414', 'гуммиарабик']],
+    ['E415', 'Ксантановая камедь', ['415', 'ксантановая']],
+    ['E296', 'Яблочная кислота', ['E-296', 'яблочная']],
+    ['E160a', 'Каротины', ['160', '160a', 'E160a', 'e160A', 'Е160a', 'E 160a', 'E-160a', 'каротины']],
+  ]) {
+    for (const modelValue of queries) {
+      const html = await renderToString(createSSRApp(IngredientSearch, {
+        modelValue, ingredients: ingredients.trainingIngredients, selectedIds: [],
+      }));
+      const rows = elements(html, 'button')
+        .map((button) => attribute(button, 'aria-label')?.value?.content)
+        .filter((label) => /^E\d+[a-z]? /i.test(label ?? ''));
       assert.deepEqual(rows, [`${id} ${name} - добавить`], modelValue);
     }
   }

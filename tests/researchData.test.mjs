@@ -24,17 +24,17 @@ after(async () => {
   await server?.close();
 });
 
-test('six training groups reuse only the existing isolated training catalog', () => {
+test('six disjoint training groups use twelve isolated ingredients without changing groups 1-3', () => {
   assert.deepEqual(categories.trainingCategories.map((group) => group.name), [
     'Группа 1', 'Группа 2', 'Группа 3', 'Группа 4', 'Группа 5', 'Группа 6',
   ]);
   const mainIds = new Set(scenarios.researchScenarios.flatMap((scenario) => scenario.goldProfile.concat(scenario.categoryIngredientIds)));
-  const trainingIds = ingredients.researchIngredients
-    .filter((ingredient) => ['training-citrates', 'distractors'].includes(ingredient.categoryId))
+  const trainingIds = ingredients.trainingIngredients
     .map((ingredient) => ingredient.id).sort();
   const groupIds = categories.trainingCategories.flatMap((group) => group.ingredientIds);
   assert.deepEqual([...new Set(groupIds)].sort(), trainingIds);
-  assert.ok(groupIds.length > new Set(groupIds).size);
+  assert.equal(trainingIds.length, 12);
+  assert.equal(groupIds.length, new Set(groupIds).size);
   for (const group of categories.trainingCategories) {
     assert.equal(group.ingredientIds.length, 2);
     assert.equal(new Set(group.ingredientIds).size, 2);
@@ -43,9 +43,19 @@ test('six training groups reuse only the existing isolated training catalog', ()
   assert.deepEqual(categories.trainingCategories.slice(0, 3).map((group) => group.ingredientIds), [
     ['E322', 'E440'], ['E330', 'E331'], ['E300', 'E500'],
   ]);
+  assert.deepEqual(categories.trainingCategories.slice(3).map((group) => group.ingredientIds), [
+    ['E270', 'E406'], ['E414', 'E415'], ['E296', 'E160a'],
+  ]);
+  assert.deepEqual(trainingIds.map((id) => ingredients.ingredientById[id].name), [
+    'Каротины', 'Молочная кислота', 'Яблочная кислота', 'Аскорбиновая кислота',
+    'Лецитины', 'Лимонная кислота', 'Цитраты натрия', 'Агар', 'Гуммиарабик',
+    'Ксантановая камедь', 'Пектины', 'Карбонаты натрия',
+  ]);
   assert.ok(!scenarios.trainingScenario.categoryIngredientIds.includes('E300'));
   assert.ok(groupIds.every((id) => !mainIds.has(id)));
   assert.equal(ingredients.researchIngredients.length, 34);
+  assert.ok(ingredients.trainingIngredients.slice(6).every((ingredient) =>
+    !ingredients.researchIngredients.some((main) => main.id === ingredient.id)));
   assert.deepEqual(categories.researchPickerCategories.map((group) => group.id), [
     'benzoates', 'guanylates', 'inosinates', 'parabens', 'propionates', 'sorbates'
   ]);
@@ -62,31 +72,33 @@ test('composition captions are explicit for all main and training groups', () =>
   ]);
 });
 
-test('overlapping training groups preserve sources, counts, restoration, and manual selections', () => {
+test('new training groups preserve sources, counts, restoration, and manual selections', () => {
   const profile = useResearchProfile(() => categories.trainingCategories);
   profile.selectCategory('training-group-1');
   profile.selectCategory('training-group-4');
-  assert.deepEqual(profile.profileIds.value, ['E300', 'E322', 'E440']);
-  assert.deepEqual(profile.provenance.value.E322, {
-    manual: false, categoryIds: ['training-group-1', 'training-group-4'],
+  assert.deepEqual(profile.profileIds.value, ['E270', 'E322', 'E406', 'E440']);
+  assert.deepEqual(profile.provenance.value.E270, {
+    manual: false, categoryIds: ['training-group-4'],
   });
-  profile.removeProfileIngredient('E322');
-  assert.equal(profile.categoryCounts.value['training-group-1'], 1);
+  profile.removeProfileIngredient('E270');
+  assert.equal(profile.categoryCounts.value['training-group-1'], 2);
   assert.equal(profile.categoryCounts.value['training-group-4'], 1);
-  assert.deepEqual(profile.addManualIngredient('E322'), ['training-group-1', 'training-group-4']);
+  assert.deepEqual(profile.addManualIngredient('E270'), ['training-group-4']);
   assert.equal(profile.categoryCounts.value['training-group-1'], 2);
   assert.equal(profile.categoryCounts.value['training-group-4'], 2);
   profile.deselectCategory('training-group-1');
-  assert.deepEqual(profile.profileIds.value, ['E300', 'E322']);
+  assert.deepEqual(profile.profileIds.value, ['E270', 'E406']);
   profile.deselectCategory('training-group-4');
-  assert.deepEqual(profile.profileIds.value, ['E322']);
+  assert.deepEqual(profile.profileIds.value, ['E270']);
 });
 
 test('all six training groups can be selected without duplicates and removed independently', () => {
   const profile = useResearchProfile(() => categories.trainingCategories);
   for (const category of categories.trainingCategories) profile.selectCategory(category.id);
   assert.equal(profile.selectedCategoryIds.value.length, 6);
-  assert.deepEqual(profile.profileIds.value, ['E300', 'E322', 'E330', 'E331', 'E440', 'E500']);
+  assert.deepEqual(profile.profileIds.value, [
+    'E160a', 'E270', 'E296', 'E300', 'E322', 'E330', 'E331', 'E406', 'E414', 'E415', 'E440', 'E500',
+  ]);
   for (const category of categories.trainingCategories) {
     assert.equal(profile.categoryCounts.value[category.id], 2);
     profile.deselectCategory(category.id);

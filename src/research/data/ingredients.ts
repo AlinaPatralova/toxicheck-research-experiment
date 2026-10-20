@@ -309,7 +309,70 @@ export const researchIngredients: ResearchIngredient[] = [
   }
 ];
 
-export const ingredientById = researchIngredients.reduce<Record<string, ResearchIngredient>>(
+const additionalTrainingIngredients: ResearchIngredient[] = [
+  {
+    id: 'E270',
+    code: 'E270',
+    name: 'Молочная кислота',
+    categoryId: 'training-group-4',
+    categoryName: 'Группа 4',
+    description: 'Тренировочный ингредиент',
+    keywords: ['lactic acid']
+  },
+  {
+    id: 'E406',
+    code: 'E406',
+    name: 'Агар',
+    categoryId: 'training-group-4',
+    categoryName: 'Группа 4',
+    description: 'Тренировочный ингредиент',
+    keywords: ['agar', 'агар-агар']
+  },
+  {
+    id: 'E414',
+    code: 'E414',
+    name: 'Гуммиарабик',
+    categoryId: 'training-group-5',
+    categoryName: 'Группа 5',
+    description: 'Тренировочный ингредиент',
+    keywords: ['gum arabic', 'acacia gum', 'камедь акации']
+  },
+  {
+    id: 'E415',
+    code: 'E415',
+    name: 'Ксантановая камедь',
+    categoryId: 'training-group-5',
+    categoryName: 'Группа 5',
+    description: 'Тренировочный ингредиент',
+    keywords: ['xanthan gum', 'ксантан']
+  },
+  {
+    id: 'E296',
+    code: 'E296',
+    name: 'Яблочная кислота',
+    categoryId: 'training-group-6',
+    categoryName: 'Группа 6',
+    description: 'Тренировочный ингредиент',
+    keywords: ['malic acid']
+  },
+  {
+    id: 'E160a',
+    code: 'E160a',
+    name: 'Каротины',
+    categoryId: 'training-group-6',
+    categoryName: 'Группа 6',
+    description: 'Тренировочный ингредиент',
+    keywords: ['carotenes']
+  }
+];
+
+export const trainingIngredients: ResearchIngredient[] = [
+  ...researchIngredients.filter((ingredient) =>
+    ingredient.categoryId === 'training-citrates' || ingredient.categoryId === 'distractors'),
+  ...additionalTrainingIngredients
+];
+
+export const ingredientById = [...researchIngredients, ...additionalTrainingIngredients].reduce<Record<string, ResearchIngredient>>(
   (map, ingredient) => {
     map[ingredient.id] = ingredient;
     return map;

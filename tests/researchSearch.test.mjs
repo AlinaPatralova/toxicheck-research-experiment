@@ -37,3 +37,11 @@ test('Russian names and explicit aliases remain case-insensitive without global 
   assert.deepEqual(searchIngredients(catalog, 'лецитины').map((row) => row.id), ['E322']);
   assert.deepEqual(searchIngredients(catalog, 'лeцитины'), []);
 });
+
+test('letter-suffixed E-codes retain exact matching and numeric partial search', () => {
+  const catalog = [ingredient('E160b', 'Other'), ingredient('E160a', 'Каротины')];
+  for (const query of ['160a', '160A', 'E160a', 'e160A', 'Е160a', 'E 160a', 'E-160a']) {
+    assert.deepEqual(searchIngredients(catalog, query).map((row) => row.id), ['E160a']);
+  }
+  assert.deepEqual(searchIngredients(catalog, '160').map((row) => row.id), ['E160b', 'E160a']);
+});

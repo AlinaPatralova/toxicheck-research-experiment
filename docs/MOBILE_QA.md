@@ -4,23 +4,25 @@
 
 The current implementation supersedes the older training checks below:
 training category controls appear only in Hybrid, with six groups in the
-existing 3-by-2 grid. Flat has the same six isolated ingredients and individual
+existing 3-by-2 grid. Flat has the same twelve isolated ingredients and individual
 search, without category controls. Groups 1-3 and the single training task,
-including its gold profile, are unchanged. Groups 4-6 reuse local ingredients:
+including its gold profile, are unchanged. Groups 4-6 now use new ingredients:
 
 | Group | Ingredient IDs |
 | --- | --- |
 | 1 | E322, E440 |
 | 2 | E330, E331 |
 | 3 | E300, E500 |
-| 4 | E300, E322 |
-| 5 | E330, E440 |
-| 6 | E331, E500 |
+| 4 | E270, E406 |
+| 5 | E414, E415 |
+| 6 | E296, E160a |
 
-No ingredient or canonical name was added. Overlaps exercise the existing
-provenance model: removing a group preserves other category/manual sources;
-profile removal excludes the ingredient from every active source, and re-add
-restores the counts without duplicates. E300 is still outside target group 2.
+Training groups do not overlap with each other or with the experimental
+scenarios. E414 replaces the proposed E202 because E202 is part of T3-S1.
+The six additions are training-only; the main catalog remains the same
+34 ingredients. E300 is still outside target group 2. The provenance model
+is unchanged, including preservation of independent manual/category sources.
+See `TRAINING_INGREDIENTS.md` for names, sources, and the catalog boundary.
 
 The shared inline search supports explicit BHA/BHT aliases in Cyrillic and
 the Russian keyboard layout. Numeric E-code queries accept optional Latin or
@@ -34,14 +36,16 @@ pre-start views use the same neutral instruction about reopening the list.
 
 Verification for this update:
 
-- `npm run check`: secret hygiene, lint, 44 tests, type check, production build,
+- `npm run check`: secret hygiene, lint, 47 tests, type check, production build,
   and production-service isolation passed.
-- Browser: 42 search cases passed across Flat and Hybrid.
-- Browser: all six main scenarios in both conditions (12 submissions) retained
+- Browser: 36 search cases for the six new ingredients passed across Flat and
+  Hybrid, including formatted letter-suffixed E160a queries.
+- The preceding full-flow pass verified all six main scenarios in both conditions (12 submissions), retaining
   their exact gold profiles and `exact_success: true`.
 - Both training conditions retained `[E300, E330, E331]`, exact success, and
   `is_training: true`. Keep training attempts outside the main analysis.
-- Exclusion/restoration logs for E322 retained both overlapping group sources.
+- New group selection, individual exclusion/restoration, and preservation of
+  a manually restored ingredient after removing its group were verified.
 - 390-by-844 viewport: the training grid has three columns/two rows, no
   horizontal overflow, and existing 44 px category controls.
 - Explicit keyboard simulation: search and the matching result remain above

@@ -59,19 +59,19 @@ export const researchCategories: ResearchCategoryDefinition[] = [
     id: 'training-group-4',
     name: 'Группа 4',
     compositionLabel: 'Состав группы 4',
-    ingredientIds: ['E300', 'E322']
+    ingredientIds: ['E270', 'E406']
   },
   {
     id: 'training-group-5',
     name: 'Группа 5',
     compositionLabel: 'Состав группы 5',
-    ingredientIds: ['E330', 'E440']
+    ingredientIds: ['E414', 'E415']
   },
   {
     id: 'training-group-6',
     name: 'Группа 6',
     compositionLabel: 'Состав группы 6',
-    ingredientIds: ['E331', 'E500']
+    ingredientIds: ['E296', 'E160a']
   }
 ];
 
