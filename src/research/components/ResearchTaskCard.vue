@@ -119,7 +119,7 @@ function updateComposition(event: Event): void {
 }
 
 .task-card__composition-title {
-  margin: 8px 0 0;
+  margin: 12px 0 0;
   color: #44554d;
   font-size: 13px;
   font-weight: 600;
