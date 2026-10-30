@@ -1,5 +1,11 @@
 # Mobile UI Verification
 
+## Training Group Visibility Fix (2026-10-30)
+
+All six practice groups are now available in training before either main
+condition. This supersedes the Hybrid-only training rule in the earlier
+report below; main Flat/Hybrid controls are unchanged.
+
 ## Search And Training Update (2026-10-20)
 
 The current implementation supersedes the older training checks below:

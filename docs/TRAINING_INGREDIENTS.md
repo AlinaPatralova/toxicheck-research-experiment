@@ -44,7 +44,8 @@ Russian labels use the user-provided names; the replacement E414 is labelled
 `researchIngredients` is still the original 34-item main catalog. The six
 new records are separate training additions. `trainingIngredients` combines
 the original six practice ingredients with these additions, giving 12 items
-in both Flat and Hybrid training. Category buttons appear only in Hybrid.
+in both Flat and Hybrid training. All six practice groups are available in
+training before either main condition. Main Flat tasks still have no category buttons.
 The shared ingredient registry resolves every training item to its code and
 name without making new items available in main tasks.
 

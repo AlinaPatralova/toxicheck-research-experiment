@@ -64,7 +64,7 @@ function renderWorkspace(condition, isTraining = false) {
   }));
 }
 
-test('training has its own title and six groups only in Hybrid', async () => {
+test('training has its own title and six groups before either main condition', async () => {
   for (const condition of ['flat', 'hybrid']) {
     const html = await renderWorkspace(condition, true);
     const headings = elements(html, 'h1');
@@ -75,9 +75,7 @@ test('training has its own title and six groups only in Hybrid', async () => {
     const groupLabels = elements(html, 'button')
       .map((button) => attribute(button, 'aria-label')?.value?.content)
       .filter((label) => label?.startsWith('Группа '));
-    assert.deepEqual(groupLabels, condition === 'hybrid'
-      ? ['Группа 1', 'Группа 2', 'Группа 3', 'Группа 4', 'Группа 5', 'Группа 6']
-      : []);
+    assert.deepEqual(groupLabels, ['Группа 1', 'Группа 2', 'Группа 3', 'Группа 4', 'Группа 5', 'Группа 6']);
     const ingredientButtons = elements(html, 'button')
       .map((button) => attribute(button, 'aria-label')?.value?.content)
       .filter((label) => /^E\d+[a-z]? /i.test(label ?? ''));
