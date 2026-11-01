@@ -1,4 +1,4 @@
-import type { ResearchCategoryDefinition } from '../researchTypes';
+import type { ResearchCategoryDefinition } from '../researchTypes.js';
 
 export const researchCategories: ResearchCategoryDefinition[] = [
   {

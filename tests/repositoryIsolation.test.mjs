@@ -31,6 +31,13 @@ test('direct dependencies and the Vue package family use exact reproducible vers
   assert.ok(Object.values(manifest.overrides).every((version) => version === manifest.dependencies.vue));
 });
 
+test('Vercel Functions have root compiler options because project references are not used by the runtime builder', async () => {
+  const config = JSON.parse(await readFile(new URL('../tsconfig.json', import.meta.url), 'utf8'));
+  assert.equal(config.compilerOptions.module, 'NodeNext');
+  assert.equal(config.compilerOptions.moduleResolution, 'NodeNext');
+  assert.ok(config.compilerOptions.types.includes('node'));
+});
+
 test('active entry points import only the research application and shared shell', async () => {
   const allowed = {
     'src/main.ts': ['vue', './App.vue', './style.css', './researchRouter'],

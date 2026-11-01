@@ -1,10 +1,10 @@
-import { getResearchCategory } from './categories';
+import { getResearchCategory } from './categories.js';
 import type {
   ResearchScenario,
   ResearchSequence,
   ResearchSequenceId,
   ResearchTaskInSequence
-} from '../researchTypes';
+} from '../researchTypes.js';
 
 function categoryIngredientIds(categoryId: string): string[] {
   return [...getResearchCategory(categoryId).ingredientIds];

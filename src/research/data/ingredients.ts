@@ -1,4 +1,4 @@
-import type { ResearchIngredient } from '../researchTypes';
+import type { ResearchIngredient } from '../researchTypes.js';
 
 export const researchIngredients: ResearchIngredient[] = [
   {

@@ -1,6 +1,6 @@
-import { getTasksForSequence, trainingScenario } from '../src/research/data/scenarios';
-import { researchIngredients, trainingIngredients } from '../src/research/data/ingredients';
-import type { ResearchParticipantPayload } from '../src/research/researchTypes';
+import { getTasksForSequence, trainingScenario } from '../src/research/data/scenarios.js';
+import { researchIngredients, trainingIngredients } from '../src/research/data/ingredients.js';
+import type { ResearchParticipantPayload } from '../src/research/researchTypes.js';
 
 const sequenceIds = ['A', 'B', 'C', 'D'] as const;
 const eventTypes = new Set([

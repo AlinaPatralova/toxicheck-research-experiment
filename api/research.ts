@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { validateResearchUpload } from '../server/researchValidation';
+import { validateResearchUpload } from '../server/researchValidation.js';
 
 const maxBytes = 2 * 1024 * 1024;
 
