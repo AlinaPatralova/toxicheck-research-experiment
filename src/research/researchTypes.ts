@@ -91,6 +91,7 @@ export type ResearchEventType =
 
 export type ResearchEventLogEntry = {
   event_id: string;
+  attempt_id?: string;
   participant_id: string;
   sequence_id: ResearchSequenceId;
   condition: ResearchCondition;
@@ -135,4 +136,19 @@ export type ResearchTaskInSequence = {
   condition: ResearchCondition;
   scenario: ResearchScenario;
   blockIndex: number;
+};
+
+export type ResearchCollectedAttempt = Omit<ResearchAttemptRecord, 'exact_success'> & {
+  status: 'started' | 'completed' | 'abandoned';
+  exact_success: boolean | null;
+};
+
+export type ResearchParticipantPayload = {
+  schema_version: 1;
+  experiment_version: 'collection-v1';
+  participant_id: string;
+  sequence_id: ResearchSequenceId;
+  session: ResearchSession;
+  attempts: ResearchCollectedAttempt[];
+  events: ResearchEventLogEntry[];
 };

@@ -8,6 +8,7 @@ import type {
 import { logResearchEvent } from '../services/researchLogger';
 import {
   appendResearchAttempt,
+  beginResearchAttempt,
   clearResearchSession,
   createResearchSession,
   loadResearchSession,
@@ -77,6 +78,7 @@ export function useResearchSession() {
     const task = currentTask.value;
     if (!currentSession || !task) return;
     const startedAt = new Date().toISOString();
+    const attemptId = beginResearchAttempt(currentSession, task.scenario, task.condition, Date.parse(startedAt));
     persist({
       ...currentSession,
       stage: 'task',
@@ -89,6 +91,7 @@ export function useResearchSession() {
       scenarioId: task.scenario.id,
       startedAtMs: Date.parse(startedAt),
       eventType: 'task_start',
+      attemptId,
       target: task.scenario.id
     });
   }

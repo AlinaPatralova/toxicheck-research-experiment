@@ -5,7 +5,7 @@ import ResearchWorkspace from '../components/ResearchWorkspace.vue';
 import { trainingScenario } from '../data/scenarios';
 import type { ResearchAttemptRecord, ResearchCondition, ResearchSession } from '../researchTypes';
 import { logResearchEvent } from '../services/researchLogger';
-import { appendResearchAttempt } from '../services/researchStorage';
+import { appendResearchAttempt, beginResearchAttempt } from '../services/researchStorage';
 
 const props = defineProps<{
   session: ResearchSession;
@@ -20,6 +20,7 @@ const startedAtMs = ref<number | null>(null);
 
 function startTraining(): void {
   startedAtMs.value = Date.now();
+  const attemptId = beginResearchAttempt(props.session, trainingScenario, props.condition, startedAtMs.value, true);
   logResearchEvent({
     participantId: props.session.participantId,
     sequenceId: props.session.sequenceId,
@@ -27,6 +28,7 @@ function startTraining(): void {
     scenarioId: trainingScenario.id,
     startedAtMs: startedAtMs.value,
     eventType: 'task_start',
+    attemptId,
     target: trainingScenario.id,
     isTraining: true
   });

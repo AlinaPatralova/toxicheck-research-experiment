@@ -13,7 +13,7 @@ npm run dev -- --host 127.0.0.1
 ```
 
 Open the printed URL. Both `/` and `/research` open the experiment. Product routes
-are not mounted. No backend, account, database, or environment variables are needed.
+are not mounted. Local-only use needs no backend, account, database, or environment variables.
 The existing Montserrat web-font request remains unchanged to preserve appearance.
 
 ## Validate
@@ -40,6 +40,7 @@ versions. The existing Vue release candidate is retained, not silently replaced.
 
 - [Connect a new GitHub repository](docs/GITHUB_SETUP.md)
 - [Create a separate deployment](docs/DEPLOYMENT.md)
+- [Enable central collection with Supabase](docs/CENTRAL_COLLECTION.md)
 - [Experiment freeze and change policy](docs/EXPERIMENT_FREEZE.md)
 - [Security and participant data](SECURITY.md)
 - [Preparation audit](docs/PREPARATION_AUDIT.md)
@@ -49,7 +50,9 @@ to a newly created `toxicheck-research-experiment` repository. Never add a produ
 remote or import a production deployment's account-link directory or environment.
 
 Participant sessions, attempts, and raw events remain in the browser's localStorage.
-They are not uploaded to a server. Exports belong outside Git. Each origin and
+With central collection disabled, they are not uploaded. The optional research API
+backs up one JSON row per participant in a separate Supabase project; see the setup
+guide above. Exports belong outside Git. Each origin and
 browser has separate storage; changing domains or using preview URLs changes the
 local participant/session context. Export data before clearing browser storage.
 

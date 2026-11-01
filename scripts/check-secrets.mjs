@@ -11,6 +11,7 @@ const patterns = [
   ['AWS access key', /(?:AKIA|ASIA)[A-Z0-9]{16}/],
   ['GitHub token', /(?:gh[pousr]_[A-Za-z0-9_]{30,}|github_pat_[A-Za-z0-9_]{40,})/],
   ['API token', /\bsk-[A-Za-z0-9_-]{24,}/],
+  ['Supabase secret key', /\bsb_secret_[A-Za-z0-9_-]{20,}/],
   ['Private key', /-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/],
   ['Database connection', /(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqps?):\/\/[^\s"']+/i],
   ['Embedded URL credentials', /https?:\/\/[^\s/:]+:[^\s/@]+@/i],

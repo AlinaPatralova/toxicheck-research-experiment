@@ -14,10 +14,13 @@ test('Git ignores credentials, deployment links, generated files, and participan
   assert.deepEqual(ignored, files);
 });
 
-test('hosting is static-only and has no production API proxy', async () => {
+test('hosting serves research Functions separately from the SPA and has no product API proxy', async () => {
   const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
   assert.equal(config.outputDirectory, 'dist');
-  assert.deepEqual(config.rewrites, [{ source: '/(.*)', destination: '/index.html' }]);
+  assert.deepEqual(config.rewrites, [{ source: '/((?!api(?:/|$)).*)', destination: '/index.html' }]);
+  const spa = new RegExp('^' + config.rewrites[0].source + '$');
+  for (const route of ['/', '/research', '/research/flat']) assert.equal(spa.test(route), true);
+  for (const route of ['/api', '/api/research', '/api/unknown']) assert.equal(spa.test(route), false);
 });
 
 test('direct dependencies and the Vue package family use exact reproducible versions', async () => {

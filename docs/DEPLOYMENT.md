@@ -1,8 +1,8 @@
 # Independent Research Deployment
 
-Configuration is prepared, but no hosting project has been created or linked.
-The previous `/api` proxy to the product backend was removed in this repository
-only. `vercel.json` now builds a static SPA with relative fallback routing.
+The independent research Vercel project hosts the Vite SPA. The previous proxy to
+the product backend remains removed. `/api/research` is a research-only Function;
+SPA fallback excludes `/api`. See [central collection setup](CENTRAL_COLLECTION.md).
 
 ## New Vercel Project
 
@@ -22,8 +22,9 @@ only. `vercel.json` now builds a static SPA with relative fallback routing.
    or product API. Google Fonts is an intentional pre-existing font request.
 10. Give participants only the stable main deployment URL, not dev/PR preview URLs.
 
-There is no server-side database or central collection endpoint. Store exported
-research data securely outside Git. Origins have separate localStorage, so select
+Central collection is opt-in and requires the Supabase migration and server-only
+Vercel credentials described in that setup guide. Store exported research data
+securely outside Git. Origins have separate localStorage, so select
 the final domain before participant assignment and collection. A source deployment
 does not migrate browser data from the local prototype.
 

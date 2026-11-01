@@ -16,7 +16,7 @@ import type {
   ResearchSession
 } from '../researchTypes';
 import { logResearchEvent } from '../services/researchLogger';
-import { createResearchId } from '../services/researchStorage';
+import { beginResearchAttempt, updateResearchAttemptProgress } from '../services/researchStorage';
 
 const props = defineProps<{
   session: ResearchSession;
@@ -28,6 +28,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ complete: [attempt: ResearchAttemptRecord] }>();
+const attemptId = beginResearchAttempt(props.session, props.scenario, props.condition, props.startedAtMs, props.isTraining);
 const query = ref('');
 const actionsCount = ref(0);
 const searchCount = ref(0);
@@ -69,7 +70,13 @@ function logEvent(
   target: string,
   metadata: Record<string, unknown> = {}
 ) {
+  updateResearchAttemptProgress(attemptId, {
+    actual_profile: [...profileIds.value].sort(), actions_count: actionsCount.value,
+    search_count: searchCount.value, add_count: addCount.value,
+    remove_count: removeCount.value, corrections_count: correctionsCount.value,
+  });
   logResearchEvent({
+    attemptId,
     participantId: props.session.participantId,
     sequenceId: props.session.sequenceId,
     condition: props.condition,
@@ -172,7 +179,7 @@ function buildAttempt(completed: boolean, abandoned: boolean): ResearchAttemptRe
   const exactSuccess = completed && !abandoned && setsEqual(actualProfile, goldProfile);
 
   return {
-    attempt_id: createResearchId('attempt'),
+    attempt_id: attemptId,
     participant_id: props.session.participantId,
     sequence_id: props.session.sequenceId,
     condition: props.condition,

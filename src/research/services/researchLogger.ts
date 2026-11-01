@@ -6,6 +6,7 @@ import type {
 import { appendResearchEvent, createResearchId } from './researchStorage';
 
 type ResearchEventInput = {
+  attemptId?: string;
   participantId: string;
   sequenceId: ResearchSequenceId;
   condition: ResearchCondition;
@@ -21,6 +22,7 @@ export function logResearchEvent(input: ResearchEventInput): void {
   const now = Date.now();
   appendResearchEvent({
     event_id: createResearchId('event'),
+    ...(input.attemptId ? { attempt_id: input.attemptId } : {}),
     participant_id: input.participantId,
     sequence_id: input.sequenceId,
     condition: input.condition,

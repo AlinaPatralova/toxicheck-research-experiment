@@ -3,7 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const forbidden = ['up.railway.app', 'openfoodfacts.org', '/scan/composition', 'VITE_API_BASE_URL'];
+const forbidden = ['up.railway.app', 'openfoodfacts.org', '/scan/composition', 'VITE_API_BASE_URL',
+  'SUPABASE_SECRET_KEY', 'save_research_result', 'write_token_hash'];
 async function check(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
@@ -17,4 +18,4 @@ async function check(directory) {
   }
 }
 await check(path.join(root, 'dist'));
-console.log('Research build contains no production backend/OCR/catalog service references.');
+console.log('Research client build contains no product service references or server-only Supabase code.');

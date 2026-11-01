@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
+import { startResearchCollection } from '../services/researchCollection';
 import ResearchCompleteView from './ResearchCompleteView.vue';
 import ResearchFlatView from './ResearchFlatView.vue';
 import ResearchHybridView from './ResearchHybridView.vue';
@@ -9,6 +10,10 @@ import ResearchTaskIntroView from './ResearchTaskIntroView.vue';
 import ResearchTrainingView from './ResearchTrainingView.vue';
 import { useResearchSession } from '../composables/useResearchSession';
 import type { ResearchAttemptRecord } from '../researchTypes';
+
+let stopCollection: (() => void) | undefined;
+onMounted(() => { stopCollection = startResearchCollection(); });
+onUnmounted(() => { stopCollection?.(); });
 
 const {
   session,
