@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Play, ShieldCheck } from 'lucide-vue-next';
 
+defineProps<{ starting?: boolean; error?: string }>();
+
 const emit = defineEmits<{
   start: [];
 }>();
@@ -35,11 +37,14 @@ const emit = defineEmits<{
     <button
       type="button"
       class="research-start__button"
+      :disabled="starting"
+      :aria-busy="starting"
       @click="emit('start')"
     >
       <Play aria-hidden="true" />
       <span>Начать исследование</span>
     </button>
+    <p v-if="error" role="alert">{{ error }}</p>
   </main>
 </template>
 

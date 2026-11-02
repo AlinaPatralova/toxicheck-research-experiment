@@ -13,7 +13,7 @@ type PendingParticipant = {
 type SyncDependencies = {
   storage: Pick<Storage, 'getItem' | 'setItem'>;
   send: (payload: ResearchParticipantPayload, revision: number, token: string) => Promise<void>;
-  makeToken: () => string;
+  makeToken: (participantId: string) => string;
   schedule: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
   cancel: (timer: ReturnType<typeof setTimeout>) => void;
 };
@@ -41,7 +41,7 @@ export function createResearchSync(deps: SyncDependencies) {
     const previous = records[payload.participant_id];
     if (previous && JSON.stringify(previous.payload) === JSON.stringify(payload)) return;
     records[payload.participant_id] = {
-      token: previous?.token || deps.makeToken(),
+      token: previous?.token || deps.makeToken(payload.participant_id),
       revision: (previous?.revision || 0) + 1,
       acknowledged: previous?.acknowledged || 0,
       payload: JSON.parse(JSON.stringify(payload)),

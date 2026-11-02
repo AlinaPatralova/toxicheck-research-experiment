@@ -17,6 +17,8 @@ onUnmounted(() => { stopCollection?.(); });
 
 const {
   session,
+  starting,
+  startError,
   currentTask,
   currentTaskNumber,
   totalTasks,
@@ -46,6 +48,8 @@ function handleAttempt(attempt: ResearchAttemptRecord): void {
   <div class="research-root">
     <ResearchStartView
       v-if="!session"
+      :starting="starting"
+      :error="startError"
       @start="startResearch"
     />
 

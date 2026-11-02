@@ -40,12 +40,18 @@ beforeEach((t) => {
     if (original) Object.defineProperty(globalThis, 'window', original);
     else Reflect.deleteProperty(globalThis, 'window');
   });
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(url, '/api/research');
+    const value = JSON.parse(options.body);
+    return Response.json({ participant_id: value.participant_id, created_at: value.created_at,
+      sequence_id: value.requested_sequence || 'C' });
+  });
 });
 
-function started(sequence = 'A') {
+async function started(sequence = 'A') {
   window.location.search = `?sequence=${sequence}`;
   const flow = useResearchSession();
-  flow.startResearch();
+  await flow.startResearch();
   flow.completeTraining();
   flow.startCurrentTask();
   return flow;
@@ -73,8 +79,8 @@ function queue(send, local = memoryStorage()) {
 }
 
 for (const sequence of ['A', 'B', 'C', 'D']) {
-  test(`${sequence}: a started attempt is durable, reuses its ID, and finishes without changing timing or gold`, () => {
-    const flow = started(sequence);
+  test(`${sequence}: a started attempt is durable, reuses its ID, and finishes without changing timing or gold`, async () => {
+    const flow = await started(sequence);
     const before = storage.getResearchParticipantPayload(flow.session.value);
     assert.equal(before.sequence_id, sequence);
     assert.equal(before.attempts.length, 1);
@@ -98,8 +104,8 @@ for (const sequence of ['A', 'B', 'C', 'D']) {
   });
 }
 
-test('explicit abandonment stays distinct from an unfinished valid attempt; both are exported', () => {
-  const flow = started();
+test('explicit abandonment stays distinct from an unfinished valid attempt; both are exported', async () => {
+  const flow = await started();
   const unfinished = storage.getResearchParticipantPayload(flow.session.value);
   assert.ok(researchAttemptsCsv(unfinished.attempts).includes('"started"'));
   assert.equal(unfinished.attempts[0].exact_success, null);
@@ -115,8 +121,8 @@ test('explicit abandonment stays distinct from an unfinished valid attempt; both
   assert.ok(validateResearchUpload({ revision: 2, payload: final }));
 });
 
-test('CSV retains numeric values verbatim while neutralising spreadsheet formulas in text', () => {
-  const flow = started();
+test('CSV retains numeric values verbatim while neutralising spreadsheet formulas in text', async () => {
+  const flow = await started();
   const attempt = storage.getResearchParticipantPayload(flow.session.value).attempts[0];
   const csv = researchAttemptsCsv([{ ...attempt, tct_ms: -5, participant_id: '=unsafe' }]);
   const [header, row] = csv.split('\n');
@@ -127,9 +133,9 @@ test('CSV retains numeric values verbatim while neutralising spreadsheet formula
   assert.ok(header.includes('status'));
 });
 
-test('training retains its original gold, is_training flag, and separate timing', () => {
+test('training retains its original gold, is_training flag, and separate timing', async () => {
   const flow = useResearchSession();
-  flow.startResearch();
+  await flow.startResearch();
   const time = 1793538000000;
   const attemptId = storage.beginResearchAttempt(flow.session.value, scenarios.trainingScenario,
     flow.firstCondition.value, time, true);
@@ -142,7 +148,7 @@ test('training retains its original gold, is_training flag, and separate timing'
 });
 
 test('network failure retains the payload and token; a fresh sender retries the same participant once', async () => {
-  const flow = started();
+  const flow = await started();
   const payload = storage.getResearchParticipantPayload(flow.session.value);
   const first = queue(async () => { throw new Error('offline'); });
   first.sync.enqueue(payload);
@@ -162,7 +168,7 @@ test('network failure retains the payload and token; a fresh sender retries the 
 });
 
 test('acknowledging a start never acknowledges a newer final snapshot still waiting in the queue', async () => {
-  const flow = started();
+  const flow = await started();
   let acknowledge;
   const sent = [];
   const q = queue(async (payload, revision) => {
@@ -184,13 +190,13 @@ test('acknowledging a start never acknowledges a newer final snapshot still wait
 });
 
 test('New Participant keeps the previous failed upload and never mixes their data', async () => {
-  let flow = started('D');
+  let flow = await started('D');
   const first = storage.getResearchParticipantPayload(flow.session.value);
   const uploads = [];
   const q = queue(async (payload) => { uploads.push(payload); });
   q.sync.enqueue(first);
   flow.resetResearch();
-  flow = started('B');
+  flow = await started('B');
   q.sync.enqueue(storage.getResearchParticipantPayload(flow.session.value));
   await q.sync.flush();
   assert.equal(uploads.length, 2);
@@ -217,7 +223,7 @@ function request(payload, token = writeToken, origin = 'https://research.example
 
 test('one API writes only through server credentials and returns no result data or secrets', async (t) => {
   configure(t);
-  const flow = started();
+  const flow = await started();
   const payload = storage.getResearchParticipantPayload(flow.session.value);
   let sent;
   t.mock.method(globalThis, 'fetch', async (url, options) => {
@@ -237,9 +243,9 @@ test('one API writes only through server credentials and returns no result data 
 
 test('API rejects foreign origins, missing tokens, malformed data, and identity/sequence mismatches before the database', async (t) => {
   configure(t);
-  const flow = started();
+  const flow = await started();
   const payload = storage.getResearchParticipantPayload(flow.session.value);
-  const mock = t.mock.method(globalThis, 'fetch', () => { throw new Error('must not call database'); });
+  const mock = t.mock.method(globalThis, 'fetch', async () => { throw new Error('must not call database'); });
   assert.equal((await api.POST(request(payload, writeToken, 'https://other.example'))).status, 403);
   assert.equal((await api.POST(request(payload, 'invalid'))).status, 401);
   const mixed = JSON.parse(JSON.stringify(payload));
@@ -256,10 +262,28 @@ test('API rejects foreign origins, missing tokens, malformed data, and identity/
 
 test('API refuses conflicting tokens and does not acknowledge database failures', async (t) => {
   configure(t);
-  const flow = started();
+  const flow = await started();
   const payload = storage.getResearchParticipantPayload(flow.session.value);
   t.mock.method(globalThis, 'fetch', async () => Response.json({ code: '42501' }, { status: 403 }));
   assert.equal((await api.POST(request(payload))).status, 403);
+});
+
+test('assignment API rejects malformed database acknowledgements instead of accepting a fallback sequence', async (t) => {
+  configure(t);
+  const body = { action: 'assign_sequence', participant_id: 'participant_invalid_reply',
+    created_at: '2026-11-02T08:00:00.000Z', requested_sequence: null };
+  let responseBody;
+  t.mock.method(globalThis, 'fetch', async () => Response.json(responseBody));
+  for (const invalid of [null, 'A', [], {}, { ...body, sequence_id: 'E' },
+    { ...body, sequence_id: 'A', participant_id: 'participant_someone_else' }]) {
+    responseBody = invalid;
+    const response = await api.POST(new Request('https://research.example/api/research', {
+      method: 'POST', headers: { Origin: 'https://research.example',
+        'Content-Type': 'application/json', Authorization: `Bearer ${writeToken}` },
+      body: JSON.stringify(body),
+    }));
+    assert.equal(response.status, 502);
+  }
 });
 
 test('central export paginates beyond 1000 rows and never requests write-token hashes', async () => {
@@ -278,7 +302,7 @@ test('central export paginates beyond 1000 rows and never requests write-token h
 test('only server Production settings mark data as production; client cannot supply the tag', async (t) => {
   configure(t);
   process.env.VERCEL_ENV = 'production';
-  const flow = started();
+  const flow = await started();
   const payload = { ...storage.getResearchParticipantPayload(flow.session.value), collection_environment: 'test' };
   t.mock.method(globalThis, 'fetch', async (_url, options) => {
     assert.equal(JSON.parse(options.body).p_data.collection_environment, 'production');
@@ -310,8 +334,9 @@ test('queue -> real API -> SQL stores start, retries after failure, and preserve
     await db.exec('create role anon; create role authenticated; create role service_role bypassrls;');
     await db.exec(await readFile(new URL('../supabase/research-results.sql', import.meta.url), 'utf8'));
     await db.exec('set role service_role');
+    const flow = await started('D');
     let unavailable = false;
-    t.mock.method(console, 'error', () => {});
+    t.mock.method(console, 'error', async () => {});
     t.mock.method(globalThis, 'fetch', async (_url, options) => {
       if (unavailable) return Response.json({}, { status: 503 });
       const p = JSON.parse(options.body);
@@ -327,7 +352,6 @@ test('queue -> real API -> SQL stores start, retries after failure, and preserve
       assert.equal(ack.participant_id, payload.participant_id);
       assert.ok(ack.revision >= revision);
     });
-    const flow = started('D');
     q.sync.enqueue(storage.getResearchParticipantPayload(flow.session.value));
     await q.sync.flush();
     let row = (await db.query('select * from public.research_results')).rows[0];

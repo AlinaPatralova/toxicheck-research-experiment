@@ -15,6 +15,7 @@ let storage;
 let scenarios;
 let useResearchSession;
 let browser;
+let assignmentCalls;
 
 before(async () => {
   server = await createServer({
@@ -52,6 +53,16 @@ beforeEach((t) => {
     },
   };
   stubGlobal(t, 'window', browser);
+  assignmentCalls = [];
+  let slot = 0;
+  stubGlobal(t, 'fetch', async (url, options) => {
+    assert.equal(url, '/api/research');
+    const value = JSON.parse(options.body);
+    assignmentCalls.push(value);
+    assert.equal(value.action, 'assign_sequence');
+    return Response.json({ participant_id: value.participant_id, created_at: value.created_at,
+      sequence_id: value.requested_sequence || ['C', 'A', 'D', 'B'][slot++ % 4] });
+  });
 });
 
 function visit(search = '') {
@@ -96,11 +107,11 @@ function makeAttempt(session, scenario, condition, isTraining = false) {
 }
 
 for (const sequenceId of Object.keys(expectedBlocks)) {
-  test(`?sequence=${sequenceId} assigns the requested sequence and preserves it throughout restoration`, () => {
+  test(`?sequence=${sequenceId} assigns the requested sequence and preserves it throughout restoration`, async () => {
     browser.localStorage.setItem(counterKey, '2');
     visit(`?sequence=${sequenceId}`);
     let flow = useResearchSession();
-    flow.startResearch();
+    await flow.startResearch();
     const participantId = flow.session.value.participantId;
     assert.equal(flow.session.value.sequenceId, sequenceId);
     assert.equal(flow.firstCondition.value, expectedBlocks[sequenceId][0][0]);
@@ -117,6 +128,7 @@ for (const sequenceId of Object.keys(expectedBlocks)) {
       assert.equal(flow.session.value.participantId, participantId);
       assert.equal(flow.session.value.sequenceId, sequenceId);
       assert.equal(browser.localStorage.getItem(counterKey), counter);
+      assert.equal(assignmentCalls.length, 1);
       assert.deepEqual(flow.tasks.value.map((task) => [task.condition, task.scenario.id]), expectedTasks(sequenceId));
     }
 
@@ -139,20 +151,23 @@ for (const sequenceId of Object.keys(expectedBlocks)) {
   });
 }
 
-test('missing sequence retains A/B/C/D cycling and unique participant identities', () => {
-  const sessions = Array.from({ length: 8 }, () => {
+test('eight independent browsers use server assignments, never a browser-local A fallback', async () => {
+  const sessions = [];
+  for (let index = 0; index < 8; index++) {
+    const values = new Map();
+    browser.localStorage = { getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) };
     const flow = useResearchSession();
-    flow.startResearch();
-    const session = flow.session.value;
-    flow.resetResearch();
-    return session;
-  });
-  assert.deepEqual(sessions.map((session) => session.sequenceId), ['A', 'B', 'C', 'D', 'A', 'B', 'C', 'D']);
+    await flow.startResearch();
+    sessions.push(flow.session.value);
+  }
+  assert.deepEqual(sessions.map((session) => session.sequenceId), ['C', 'A', 'D', 'B', 'C', 'A', 'D', 'B']);
   assert.equal(new Set(sessions.map((session) => session.participantId)).size, 8);
-  assert.equal(browser.localStorage.getItem(counterKey), '8');
+  assert.ok(assignmentCalls.every(call => call.requested_sequence === null));
+  assert.equal(browser.localStorage.getItem(counterKey), null);
 });
 
-test('invalid, empty, lower-case, and repeated sequence parameters safely use the existing cycle', () => {
+test('invalid, empty, lower-case, and repeated parameters request automatic server allocation', async () => {
   for (const search of [
     '?sequence=', '?sequence=E', '?sequence=a', '?sequence=AB', '?sequence=A%20',
     '?sequence=%20B', '?sequence=%', '?sequence=null', '?sequence=__proto__',
@@ -161,30 +176,32 @@ test('invalid, empty, lower-case, and repeated sequence parameters safely use th
     browser.localStorage.setItem(counterKey, '1');
     visit(search);
     const flow = useResearchSession();
-    flow.startResearch();
-    assert.equal(flow.session.value.sequenceId, 'B', search);
-    assert.equal(browser.localStorage.getItem(counterKey), '2', search);
+    await flow.startResearch();
+    assert.equal(assignmentCalls.at(-1).requested_sequence, null, search);
+    assert.ok(Object.hasOwn(expectedBlocks, flow.session.value.sequenceId));
+    assert.equal(browser.localStorage.getItem(counterKey), '1', search);
     flow.resetResearch();
   }
 });
 
-test('a valid sequence works alongside unrelated URL parameters and advances the technical counter once', () => {
+test('manual test requests work alongside unrelated parameters without consuming an automatic slot', async () => {
   visit('?source=invitation&sequence=D&participant=test');
   let flow = useResearchSession();
-  flow.startResearch();
+  await flow.startResearch();
   assert.equal(flow.session.value.sequenceId, 'D');
-  assert.equal(browser.localStorage.getItem(counterKey), '1');
+  assert.equal(assignmentCalls[0].requested_sequence, 'D');
+  assert.equal(browser.localStorage.getItem(counterKey), null);
   flow.resetResearch();
   visit();
   flow = useResearchSession();
-  flow.startResearch();
-  assert.equal(flow.session.value.sequenceId, 'B');
+  await flow.startResearch();
+  assert.equal(flow.session.value.sequenceId, 'C');
 });
 
-test('new participant can use another sequence in the same browser without deleting previous records', () => {
+test('new participant can use another sequence in the same browser without deleting previous records', async () => {
   visit('?sequence=D');
   let flow = useResearchSession();
-  flow.startResearch();
+  await flow.startResearch();
   const firstParticipantId = flow.session.value.participantId;
   storage.appendResearchAttempt(makeAttempt(flow.session.value, scenarios.trainingScenario, flow.firstCondition.value, true));
   const previousAttempts = storage.readResearchAttempts();
@@ -193,7 +210,7 @@ test('new participant can use another sequence in the same browser without delet
   assert.equal(storage.loadResearchSession(), null);
   visit('?sequence=B');
   flow = useResearchSession();
-  flow.startResearch();
+  await flow.startResearch();
   assert.notEqual(flow.session.value.participantId, firstParticipantId);
   assert.equal(flow.session.value.sequenceId, 'B');
   assert.equal(flow.session.value.stage, 'training');
@@ -201,6 +218,53 @@ test('new participant can use another sequence in the same browser without delet
   assert.equal(flow.session.value.activeTaskStartedAt, null);
   assert.deepEqual(storage.readResearchAttempts(), previousAttempts);
   assert.deepEqual(storage.readResearchEvents().slice(0, previousEvents.length), previousEvents);
+});
+
+test('assignment failure shows a retry error, starts no task, and retries the same identity after reload', async (t) => {
+  let saved;
+  let calls = 0;
+  stubGlobal(t, 'fetch', async (_url, options) => {
+    const value = JSON.parse(options.body);
+    calls++;
+    if (!saved) saved = { value, token: options.headers.Authorization };
+    assert.deepEqual(value, saved.value);
+    assert.equal(options.headers.Authorization, saved.token);
+    if (calls === 1) throw new Error('Reply lost after server committed');
+    return Response.json({ participant_id: value.participant_id,
+      created_at: value.created_at, sequence_id: 'B' });
+  });
+  let flow = useResearchSession();
+  await flow.startResearch();
+  assert.equal(flow.session.value, null);
+  assert.equal(flow.starting.value, false);
+  assert.match(flow.startError.value, /подключ/);
+  assert.equal(storage.readResearchEvents().length, 0);
+  assert.equal(storage.readCollectedResearchAttempts().length, 0);
+  visit('?sequence=A');
+  flow = useResearchSession();
+  await flow.startResearch();
+  assert.equal(flow.session.value.sequenceId, 'B');
+  assert.equal(flow.startError.value, '');
+  assert.equal(calls, 2);
+});
+
+test('double clicking Start allocates only once and does not start a timer', async (t) => {
+  let release;
+  let count = 0;
+  stubGlobal(t, 'fetch', async (_url, options) => {
+    count++;
+    const value = JSON.parse(options.body);
+    await new Promise(resolve => { release = resolve; });
+    return Response.json({ participant_id: value.participant_id, created_at: value.created_at, sequence_id: 'D' });
+  });
+  const flow = useResearchSession();
+  const first = flow.startResearch();
+  await flow.startResearch();
+  assert.equal(flow.starting.value, true);
+  assert.equal(flow.session.value, null);
+  release(); await first;
+  assert.equal(count, 1);
+  assert.equal(flow.session.value.activeTaskStartedAt, null);
 });
 
 function parseCsv(content) {
@@ -236,7 +300,7 @@ test('the actual CSV download preserves sequence_id and participant_id for train
   for (const sequenceId of Object.keys(expectedBlocks)) {
     visit(`?sequence=${sequenceId}`);
     const flow = useResearchSession();
-    flow.startResearch();
+    await flow.startResearch();
     expectedParticipants.set(flow.session.value.participantId, sequenceId);
     storage.appendResearchAttempt(makeAttempt(flow.session.value, scenarios.trainingScenario, flow.firstCondition.value, true));
     flow.completeTraining();

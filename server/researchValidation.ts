@@ -29,6 +29,16 @@ function sameSet(value: unknown, expected: string[]): boolean {
     && new Set(value).size === value.length && value.every((item) => expected.includes(item));
 }
 
+export function validateResearchAssignment(value: unknown): {
+  participant_id: string; created_at: string; requested_sequence: string | null;
+} | null {
+  if (!object(value) || value.action !== 'assign_sequence' || !id(value.participant_id, 'participant')
+    || !date(value.created_at)
+    || !(value.requested_sequence === null || sequenceIds.some((id) => id === value.requested_sequence))) return null;
+  return { participant_id: value.participant_id, created_at: value.created_at,
+    requested_sequence: value.requested_sequence as string | null };
+}
+
 export function validateResearchUpload(value: unknown): {
   revision: number;
   payload: ResearchParticipantPayload;

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { validateResearchUpload } from '../server/researchValidation.js';
+import { validateResearchAssignment, validateResearchUpload } from '../server/researchValidation.js';
 
 const maxBytes = 2 * 1024 * 1024;
 
@@ -24,30 +24,35 @@ export async function POST(request: Request): Promise<Response> {
     if (Buffer.byteLength(text) > maxBytes) return reply(413, { error: 'Payload too large' });
     value = JSON.parse(text);
   } catch { return reply(400, { error: 'Invalid JSON' }); }
-  const upload = validateResearchUpload(value);
-  if (!upload) return reply(400, { error: 'Invalid research data' });
+  const assignment = validateResearchAssignment(value);
+  const upload = assignment ? null : validateResearchUpload(value);
+  if (!assignment && !upload) return reply(400, { error: 'Invalid research data' });
   const base = process.env.SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!base || !secret || !base.startsWith('https://')) {
     return reply(503, { error: 'Research storage is not configured' });
   }
   try {
-    const response = await fetch(`${base.replace(/\/$/, '')}/rest/v1/rpc/save_research_result`, {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const environment = process.env.VERCEL_ENV === 'production' ? 'production' : 'test';
+    const rpc = assignment ? 'assign_research_sequence' : 'save_research_result';
+    const parameters = assignment ? {
+      p_participant_id: assignment.participant_id, p_write_token_hash: tokenHash,
+      p_created_at: assignment.created_at, p_environment: environment,
+      p_requested_sequence: assignment.requested_sequence,
+    } : {
+      p_participant_id: upload!.payload.participant_id,
+      p_sequence_id: upload!.payload.sequence_id,
+      p_revision: upload!.revision, p_write_token_hash: tokenHash,
+      p_data: { ...upload!.payload, collection_environment: environment },
+    };
+    const response = await fetch(`${base.replace(/\/$/, '')}/rest/v1/rpc/${rpc}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json', apikey: secret,
         ...(secret.startsWith('eyJ') ? { Authorization: `Bearer ${secret}` } : {}),
       },
-      body: JSON.stringify({
-        p_participant_id: upload.payload.participant_id,
-        p_sequence_id: upload.payload.sequence_id,
-        p_revision: upload.revision,
-        p_write_token_hash: createHash('sha256').update(token).digest('hex'),
-        p_data: {
-          ...upload.payload,
-          collection_environment: process.env.VERCEL_ENV === 'production' ? 'production' : 'test',
-        },
-      }),
+      body: JSON.stringify(parameters),
       signal: AbortSignal.timeout(10000),
     });
     if (!response.ok) {
@@ -58,12 +63,23 @@ export async function POST(request: Request): Promise<Response> {
       console.error('Research database rejected upload', { status: response.status });
       return reply(502, { error: 'Research storage unavailable' });
     }
-    const result = await response.json();
+    const raw: unknown = await response.json();
+    const result = raw && typeof raw === 'object' && !Array.isArray(raw)
+      ? raw as Record<string, unknown> : null;
+    if (!result) return reply(502, { error: 'Invalid storage acknowledgement' });
+    if (assignment) {
+      if (result.participant_id !== assignment.participant_id
+        || typeof result.sequence_id !== 'string' || !['A', 'B', 'C', 'D'].includes(result.sequence_id)
+        || result.created_at !== assignment.created_at) {
+        return reply(502, { error: 'Invalid assignment acknowledgement' });
+      }
+      return reply(200, result);
+    }
     const revision = result && typeof result === 'object' && 'revision' in result ? result.revision : null;
-    if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < upload.revision) {
+    if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < upload!.revision) {
       return reply(502, { error: 'Invalid storage acknowledgement' });
     }
-    return reply(200, { participant_id: upload.payload.participant_id, revision });
+    return reply(200, { participant_id: upload!.payload.participant_id, revision });
   } catch {
     console.error('Research storage request failed');
     return reply(503, { error: 'Research storage unavailable' });

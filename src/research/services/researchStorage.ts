@@ -5,15 +5,14 @@ import type {
   ResearchEventLogEntry,
   ResearchParticipantPayload,
   ResearchScenario,
-  ResearchSequenceId,
   ResearchSession
 } from '../researchTypes';
 import { researchAttemptsCsv } from '../utils/exportResearch';
+import { pendingAssignmentKey, requestResearchSession } from './researchAssignment';
 
 const sessionKey = 'toxicheck_research_session_v1';
 const attemptsKey = 'toxicheck_research_attempts_v1';
 const eventsKey = 'toxicheck_research_events_v1';
-const sequenceCounterKey = 'toxicheck_research_sequence_counter_v1';
 const startedAttemptsKey = 'toxicheck_research_started_attempts_v1';
 
 export const researchDataChangedEvent = 'toxicheck-research-data-changed';
@@ -21,8 +20,6 @@ export const researchDataChangedEvent = 'toxicheck-research-data-changed';
 function notifyResearchChange(): void {
   window.dispatchEvent?.(new Event(researchDataChangedEvent));
 }
-
-const sequenceIds: ResearchSequenceId[] = ['A', 'B', 'C', 'D'];
 
 function parseJson<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
@@ -55,26 +52,11 @@ export function saveResearchSession(session: ResearchSession): void {
 
 export function clearResearchSession(): void {
   window.localStorage.removeItem(sessionKey);
+  window.localStorage.removeItem(pendingAssignmentKey);
 }
 
-export function createResearchSession(): ResearchSession {
-  const counter = Number(window.localStorage.getItem(sequenceCounterKey) || '0');
-  const requestedSequences = new URLSearchParams(window.location.search).getAll('sequence');
-  const requestedSequence = requestedSequences.length === 1
-    ? sequenceIds.find((id) => id === requestedSequences[0])
-    : undefined;
-  const sequenceId = requestedSequence || sequenceIds[counter % sequenceIds.length] || 'A';
-  window.localStorage.setItem(sequenceCounterKey, String(counter + 1));
-
-  return {
-    participantId: generateId('participant'),
-    sequenceId,
-    createdAt: new Date().toISOString(),
-    stage: 'training',
-    currentTaskIndex: 0,
-    activeTaskStartedAt: null,
-    lastAttemptId: null
-  };
+export function createResearchSession(): Promise<ResearchSession> {
+  return requestResearchSession(window.localStorage, window.location.search, () => generateId('participant'));
 }
 
 export function readResearchAttempts(): ResearchAttemptRecord[] {

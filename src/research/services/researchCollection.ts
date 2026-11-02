@@ -1,12 +1,12 @@
 import { getResearchParticipantPayload, loadResearchSession, researchDataChangedEvent } from './researchStorage';
 import { createResearchSync } from './researchSync';
+import { researchAssignmentToken } from './researchAssignment';
 
 export function startResearchCollection(): () => void {
   if (import.meta.env.VITE_RESEARCH_COLLECTION_ENABLED !== 'true') return () => {};
   const sync = createResearchSync({
     storage: window.localStorage,
-    makeToken: () => [...crypto.getRandomValues(new Uint8Array(32))]
-      .map((byte) => byte.toString(16).padStart(2, '0')).join(''),
+    makeToken: (participantId) => researchAssignmentToken(window.localStorage, participantId),
     schedule: (callback, delay) => setTimeout(callback, delay),
     cancel: (timer) => clearTimeout(timer),
     send: async (payload, revision, token) => {

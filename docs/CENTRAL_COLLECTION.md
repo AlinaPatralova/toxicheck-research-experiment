@@ -3,13 +3,14 @@
 The application keeps its Vue/Vite UI and existing task/timer definitions. When
 enabled, it sends participant snapshots to `POST /api/research`. The server writes
 one JSONB row per participant in `public.research_results`. There is no participant
-login, read endpoint, or admin UI. SQL merging runs inside one database transaction.
+login, read endpoint, or admin UI. The same API also allocates a new participant's
+sequence atomically before training. SQL merging runs inside one database transaction.
 
 ## Set up
 
 1. Create a separate Supabase project for this research. In **SQL Editor**, run
    the complete [`research-results.sql`](../supabase/research-results.sql) file.
-   It creates one table and one server-only write function, enables RLS, and denies
+   It creates one table and two server-only functions (allocate/save), enables RLS, and denies
    table/function access to `anon` and `authenticated`.
 2. In Supabase **Settings / API Keys**, obtain the project URL and a **secret** key
    (`sb_secret_...`). Do not put it in chat, Git, frontend source, or any `VITE_` variable.
@@ -25,15 +26,19 @@ login, read endpoint, or admin UI. SQL merging runs inside one database transact
    Preview and Production can use this one research Supabase project: the server
    stamps Preview/development records `collection_environment=test` and Production
    records `collection_environment=production`. This tag cannot be selected by the
-   participant or changed for an existing participant. Standard exports include
+   participant or changed for an existing participant. Manual `?sequence=` sessions
+   are always test records, including on Production, and do not consume automatic
+   allocation slots. The database preserves this server-owned classification on
+   every upload. Standard exports include
    Production only. Do not reuse product ToxiCheck credentials.
    `RESEARCH_ALLOWED_ORIGIN` is optional; when set, it must exactly match
    the allowed site origin, without a trailing slash. Otherwise the API requires the
    request Origin to match its own URL origin.
 4. Deploy this revision in the research project. Environment changes require a new
    deployment; the `VITE_` flag is read at build time. With the flag absent/false,
-   the application remains local-only. The plain `vite` dev server does not run the
-   API: use a Vercel Preview (or `vercel dev`) for the real collection check.
+   background snapshot uploads are disabled. New sessions still require the API
+   for balanced assignment; no local A fallback is used. The plain `vite` dev server
+   does not run the API: use a Vercel Preview (or `vercel dev`) for a new session.
 5. Start a **new test participant** with a clean browser session and `?sequence=D`.
    After Start Task, Supabase Table Editor should show a row with a `started` attempt.
    After confirmation, the same row/attempt ID should contain `completed`.
@@ -50,8 +55,9 @@ new participants; use controlled invitations if that becomes a problem.
 ## Local backup and retry
 
 The original session/attempt/event storage is retained. Started attempts have a
-separate local key. A participant ID is allocated as before; the collection layer
-adds a random per-participant write token. Only its hash is stored in Supabase.
+separate local key. Before assignment, a pending participant ID and random write
+token are saved locally. Allocation retries reuse both. The same token is used by
+the snapshot upload queue. Only its hash is stored in Supabase.
 This token cannot read results or write another participant's existing row.
 
 Snapshots are queued locally and sent in the background after starts, finishes,
@@ -60,7 +66,8 @@ on application load / `online`. One request is in flight per sender. An acknowle
 only marks its own revision as delivered, leaving newer updates pending. The queue
 is retained when New Participant is clicked. Duplicate attempts/events are merged by
 ID, delayed starts cannot erase a final record, and final records/events cannot be
-silently rewritten. No network request is awaited by the task or timer.
+silently rewritten. Only initial assignment waits for the network, before training.
+Task actions and timers never await uploads.
 
 Local JSON/CSV exports work even without Supabase. Network delivery is not guaranteed
 if a participant stays offline and never returns, clears browser data, or has local
@@ -105,7 +112,7 @@ snapshots/events; CSV has one row per attempt and all existing metric columns pl
 `.env.local` are ignored by Git. The participant-facing export buttons remain local.
 
 To obtain a separate QA export including test records, run
-`npm run export:research -- --include-test`. In Supabase, identify Preview rows by
+`npm run export:research -- --include-test`. In Supabase, identify test rows by
 `data->>'collection_environment' = 'test'`; never merge these into the main sample.
 Publishing to Production requires a Production build with Production environment
 variables; merely aliasing/promoting a Preview build retains its Preview settings.

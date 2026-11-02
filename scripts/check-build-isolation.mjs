@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const forbidden = ['up.railway.app', 'openfoodfacts.org', '/scan/composition', 'VITE_API_BASE_URL',
-  'SUPABASE_SECRET_KEY', 'save_research_result', 'write_token_hash'];
+  'SUPABASE_SECRET_KEY', 'save_research_result', 'assign_research_sequence', 'write_token_hash'];
 async function check(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);

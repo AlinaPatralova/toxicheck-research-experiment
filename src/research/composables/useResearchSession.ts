@@ -18,6 +18,8 @@ import {
 
 export function useResearchSession() {
   const session = ref<ResearchSession | null>(loadResearchSession());
+  const starting = ref(false);
+  const startError = ref('');
 
   const tasks = computed(() => session.value ? getTasksForSequence(session.value.sequenceId) : []);
 
@@ -49,17 +51,28 @@ export function useResearchSession() {
     saveResearchSession(nextSession);
   }
 
-  function startResearch(): void {
-    const nextSession = createResearchSession();
-    persist(nextSession);
-    logResearchEvent({
-      participantId: nextSession.participantId,
-      sequenceId: nextSession.sequenceId,
-      condition: getFirstCondition(nextSession.sequenceId),
-      scenarioId: 'research',
-      eventType: 'research_start',
-      target: 'research'
-    });
+  async function startResearch(): Promise<void> {
+    if (starting.value || session.value) return;
+    starting.value = true;
+    startError.value = '';
+    try {
+      const nextSession = await createResearchSession();
+      // Another tab may already have established the same session while we waited.
+      const restored = loadResearchSession();
+      persist(restored || nextSession);
+      if (!restored) logResearchEvent({
+        participantId: nextSession.participantId,
+        sequenceId: nextSession.sequenceId,
+        condition: getFirstCondition(nextSession.sequenceId),
+        scenarioId: 'research',
+        eventType: 'research_start',
+        target: 'research'
+      });
+    } catch {
+      startError.value = 'Не удалось подключиться к исследованию. Проверьте подключение к интернету и нажмите Начать исследование ещё раз.';
+    } finally {
+      starting.value = false;
+    }
   }
 
   function completeTraining(): void {
@@ -146,6 +159,8 @@ export function useResearchSession() {
 
   return {
     session,
+    starting,
+    startError,
     tasks,
     currentTask,
     currentTaskNumber,
