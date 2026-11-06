@@ -145,7 +145,11 @@ for (const sequenceId of Object.keys(expectedBlocks)) {
       flow.continueAfterTask();
       restore();
     }
+    assert.equal(flow.session.value.stage, 'feedback');
+    restore();
+    assert.equal(flow.submitFeedback({ flat_ease_rating: 3, hybrid_ease_rating: 5, preferred_model: 'hybrid' }), true);
     assert.equal(flow.session.value.stage, 'complete');
+    restore();
     assert.ok(storage.readResearchAttempts().every((attempt) => attempt.sequence_id === sequenceId));
     assert.ok(storage.readResearchEvents().every((event) => event.sequence_id === sequenceId));
   });

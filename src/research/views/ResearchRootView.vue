@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted } from 'vue';
 import { startResearchCollection } from '../services/researchCollection';
 import ResearchCompleteView from './ResearchCompleteView.vue';
+import ResearchFeedbackView from './ResearchFeedbackView.vue';
 import ResearchFlatView from './ResearchFlatView.vue';
 import ResearchHybridView from './ResearchHybridView.vue';
 import ResearchStartView from './ResearchStartView.vue';
@@ -29,6 +30,7 @@ const {
   startCurrentTask,
   recordAttempt,
   continueAfterTask,
+  submitFeedback,
   resetResearch
 } = useResearchSession();
 
@@ -92,6 +94,11 @@ function handleAttempt(attempt: ResearchAttemptRecord): void {
       :attempt="lastAttempt"
       :has-next-task="hasNextTask"
       @continue="continueAfterTask"
+    />
+
+    <ResearchFeedbackView
+      v-else-if="session.stage === 'feedback'"
+      :submit-feedback="submitFeedback"
     />
 
     <ResearchCompleteView

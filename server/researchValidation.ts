@@ -1,6 +1,7 @@
 import { getTasksForSequence, trainingScenario } from '../src/research/data/scenarios.js';
 import { researchIngredients, trainingIngredients } from '../src/research/data/ingredients.js';
 import type { ResearchParticipantPayload } from '../src/research/researchTypes.js';
+import { validResearchFeedback } from '../src/research/utils/researchFeedback.js';
 
 const sequenceIds = ['A', 'B', 'C', 'D'] as const;
 const eventTypes = new Set([
@@ -49,7 +50,7 @@ export function validateResearchUpload(value: unknown): {
     || !id(p.participant_id, 'participant') || !sequenceIds.some((item) => item === p.sequence_id)
     || !object(p.session) || p.session.participantId !== p.participant_id
     || p.session.sequenceId !== p.sequence_id || !date(p.session.createdAt)
-    || !['training', 'intro', 'task', 'task-complete', 'complete'].includes(String(p.session.stage))
+    || !['training', 'intro', 'task', 'task-complete', 'feedback', 'complete'].includes(String(p.session.stage))
     || !count(p.session.currentTaskIndex) || (p.session.currentTaskIndex as number) > 6
     || !(p.session.activeTaskStartedAt === null || date(p.session.activeTaskStartedAt))
     || !(p.session.lastAttemptId === null || id(p.session.lastAttemptId, 'attempt'))
@@ -90,6 +91,13 @@ export function validateResearchUpload(value: unknown): {
     } else return null;
     attempts.set(a.attempt_id, a);
   }
+  if (p.session.stage === 'feedback' || p.feedback !== undefined) {
+    if (p.session.currentTaskIndex !== tasks.length || p.session.activeTaskStartedAt !== null
+      || !tasks.every((task) => [...attempts.values()].some((attempt) =>
+        attempt.scenario_id === task.scenario.id && attempt.status !== 'started'))) return null;
+  }
+  if (p.feedback !== undefined && (p.session.stage !== 'complete'
+    || !validResearchFeedback(p.feedback, p.participant_id as string, p.sequence_id as string))) return null;
   const eventIds = new Set();
   for (const e of p.events) {
     if (!object(e) || !id(e.event_id, 'event') || eventIds.has(e.event_id)

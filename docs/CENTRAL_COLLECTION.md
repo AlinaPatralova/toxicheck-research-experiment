@@ -97,6 +97,24 @@ leave the prior training attempt unfinished. The raw event history remains avail
 
 ## Get central JSON and CSV
 
+### Ease ratings after the tasks
+
+After the six main tasks, A/B/C/D continue to an untimed `feedback` step before
+the results/export screen. Both 1–5 ease ratings and a preference are required.
+The original `research_complete` event remains at the end of the task sequence;
+the questionnaire creates no attempt and does not change any task TCT or outcome.
+Already-completed historical sessions are not reopened or modified.
+
+One `feedback` object is stored in the same participant JSON, with `participant_id`,
+`sequence_id`, `flat_ease_rating`, `hybrid_ease_rating`, `preferred_model` and
+`feedback_submitted_at` (ISO 8601). Local backup uses
+`toxicheck_research_feedback_v1` and the existing upload/retry queue. The database
+preserves the first submitted response across duplicate and out-of-order uploads.
+
+Before deploying this revision, reapply `supabase/research-results.sql` to the
+research project to update the save function. It is idempotent, changes no existing
+rows, and adds no tables or public permissions.
+
 Supabase Table Editor shows each participant's `data` JSON. For a complete analysis
 export, on your own computer copy `.env.example` to `.env.local` and fill in the URL
 and secret key there. With Node 24 / the project dependencies installed, run:
@@ -108,7 +126,11 @@ npm run export:research
 This writes timestamped `exports/research-*.json` and `.csv` files. The exporter pages
 through the database, including more than 1,000 rows. JSON includes full participant
 snapshots/events; CSV has one row per attempt and all existing metric columns plus
-`status`. `write_token_hash` and credentials are never exported. `exports/` and
+`status` and the four feedback fields. Those participant-level answers repeat on
+the participant's existing attempt rows; they are not extra attempts. Historical
+participants without feedback have empty feedback columns. Local JSON exports
+include a `feedback` array; central JSON retains each participant's `data.feedback`.
+`write_token_hash` and credentials are never exported. `exports/` and
 `.env.local` are ignored by Git. The participant-facing export buttons remain local.
 
 To obtain a separate QA export including test records, run

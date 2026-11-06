@@ -3,21 +3,32 @@ import { getFirstCondition, getTasksForSequence } from '../data/scenarios';
 import type {
   ResearchAttemptRecord,
   ResearchCondition,
+  ResearchFeedbackAnswers,
   ResearchSession
 } from '../researchTypes';
 import { logResearchEvent } from '../services/researchLogger';
 import {
   appendResearchAttempt,
+  appendResearchFeedback,
   beginResearchAttempt,
   clearResearchSession,
   createResearchSession,
+  feedbackForSession,
   loadResearchSession,
   readResearchAttempts,
   saveResearchSession
 } from '../services/researchStorage';
+import { validFeedbackAnswers } from '../utils/researchFeedback';
 
 export function useResearchSession() {
-  const session = ref<ResearchSession | null>(loadResearchSession());
+  const savedSession = loadResearchSession();
+  // Recover a reload between saving the answers and persisting the final screen.
+  // Historical sessions already marked complete are never migrated or reopened.
+  if (savedSession?.stage === 'feedback' && feedbackForSession(savedSession)) {
+    savedSession.stage = 'complete';
+    saveResearchSession(savedSession);
+  }
+  const session = ref<ResearchSession | null>(savedSession);
   const starting = ref(false);
   const startError = ref('');
 
@@ -123,12 +134,12 @@ export function useResearchSession() {
 
   function continueAfterTask(): void {
     const currentSession = session.value;
-    if (!currentSession) return;
+    if (!currentSession || currentSession.stage !== 'task-complete') return;
     const nextIndex = currentSession.currentTaskIndex + 1;
     if (nextIndex >= tasks.value.length) {
       persist({
         ...currentSession,
-        stage: 'complete',
+        stage: 'feedback',
         currentTaskIndex: nextIndex,
         activeTaskStartedAt: null
       });
@@ -152,6 +163,21 @@ export function useResearchSession() {
     });
   }
 
+  function submitFeedback(answers: ResearchFeedbackAnswers): boolean {
+    const currentSession = session.value;
+    if (!currentSession || currentSession.stage !== 'feedback' || !validFeedbackAnswers(answers)) return false;
+    appendResearchFeedback({
+      participant_id: currentSession.participantId,
+      sequence_id: currentSession.sequenceId,
+      flat_ease_rating: answers.flat_ease_rating,
+      hybrid_ease_rating: answers.hybrid_ease_rating,
+      preferred_model: answers.preferred_model,
+      feedback_submitted_at: new Date().toISOString(),
+    });
+    persist({ ...currentSession, stage: 'complete' });
+    return true;
+  }
+
   function resetResearch(): void {
     clearResearchSession();
     session.value = null;
@@ -172,6 +198,7 @@ export function useResearchSession() {
     startCurrentTask,
     recordAttempt,
     continueAfterTask,
+    submitFeedback,
     resetResearch
   };
 }

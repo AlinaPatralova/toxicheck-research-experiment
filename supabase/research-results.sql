@@ -24,12 +24,27 @@ declare
   merged_attempts jsonb;
   merged_events jsonb;
   merged_data jsonb;
+  saved_feedback jsonb;
 begin
   if p_data->>'participant_id' is distinct from p_participant_id
     or p_data->>'sequence_id' is distinct from p_sequence_id
     or jsonb_typeof(p_data->'attempts') is distinct from 'array'
     or jsonb_typeof(p_data->'events') is distinct from 'array' then
     raise exception 'Invalid snapshot' using errcode = '22023';
+  end if;
+  if p_data ? 'feedback' then
+    if jsonb_typeof(p_data->'feedback') is distinct from 'object'
+      or p_data->'feedback'->>'participant_id' is distinct from p_participant_id
+      or p_data->'feedback'->>'sequence_id' is distinct from p_sequence_id
+      or jsonb_typeof(p_data->'feedback'->'flat_ease_rating') is distinct from 'number'
+      or jsonb_typeof(p_data->'feedback'->'hybrid_ease_rating') is distinct from 'number'
+      or coalesce(p_data->'feedback'->>'flat_ease_rating', '') !~ '^[1-5]$'
+      or coalesce(p_data->'feedback'->>'hybrid_ease_rating', '') !~ '^[1-5]$'
+      or coalesce(p_data->'feedback'->>'preferred_model', '') not in ('flat', 'hybrid', 'equal', 'unsure')
+      or coalesce(p_data->'feedback'->>'feedback_submitted_at', '') !~ '^\d{4}-\d{2}-\d{2}T' then
+      raise exception 'Invalid feedback' using errcode = '22023';
+    end if;
+    perform (p_data->'feedback'->>'feedback_submitted_at')::timestamptz;
   end if;
 
   -- Allocation metadata is server-owned and cannot be supplied by an upload.
@@ -45,6 +60,10 @@ begin
   end if;
   if previous.sequence_id <> p_sequence_id then
     raise exception 'Sequence cannot change' using errcode = '22023';
+  end if;
+  if previous.data ? 'feedback' and p_data ? 'feedback'
+    and previous.data->'feedback' <> p_data->'feedback' then
+    raise exception 'Feedback cannot change' using errcode = '22023';
   end if;
   if previous.data ? 'assignment' then
     p_data := jsonb_set(jsonb_set(p_data, '{assignment}', previous.data->'assignment'),
@@ -98,6 +117,13 @@ begin
   end if;
   merged_data := case when p_revision >= previous.revision then p_data else previous.data end;
   merged_data := jsonb_set(jsonb_set(merged_data, '{attempts}', merged_attempts), '{events}', merged_events);
+  -- One response per participant. Retried/older snapshots cannot erase answers,
+  -- change the submission time, or reopen the feedback step after submission.
+  saved_feedback := coalesce(previous.data->'feedback', p_data->'feedback');
+  if saved_feedback is not null then
+    merged_data := jsonb_set(merged_data, '{feedback}', saved_feedback);
+    merged_data := jsonb_set(merged_data, '{session,stage}', '"complete"'::jsonb);
+  end if;
   update public.research_results set data = merged_data,
     revision = greatest(previous.revision, p_revision), updated_at = clock_timestamp()
     where participant_id = p_participant_id;

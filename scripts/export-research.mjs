@@ -24,6 +24,13 @@ export async function fetchResearchResults(base, secret, fetcher = fetch, includ
   }
 }
 
+export function researchResultsCsv(participants) {
+  return researchAttemptsCsv(
+    participants.flatMap((row) => row.data.attempts),
+    participants.flatMap((row) => row.data.feedback ? [row.data.feedback] : []),
+  );
+}
+
 async function main() {
   const base = process.env.SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY;
@@ -33,7 +40,7 @@ async function main() {
   await mkdir(output, { recursive: true });
   const prefix = path.join(output, `research-${new Date().toISOString().replaceAll(/[:.]/g, '-')}`);
   await writeFile(prefix + '.json', JSON.stringify({ exported_at: new Date().toISOString(), participants }, null, 2), { flag: 'wx' });
-  await writeFile(prefix + '.csv', '\uFEFF' + researchAttemptsCsv(participants.flatMap((row) => row.data.attempts)), { flag: 'wx' });
+  await writeFile(prefix + '.csv', '\uFEFF' + researchResultsCsv(participants), { flag: 'wx' });
   console.log(`Exported ${participants.length} participants to ${prefix}.{json,csv}`);
 }
 

@@ -3,17 +3,20 @@ import type {
   ResearchCollectedAttempt,
   ResearchCondition,
   ResearchEventLogEntry,
+  ResearchFeedback,
   ResearchParticipantPayload,
   ResearchScenario,
   ResearchSession
 } from '../researchTypes';
 import { researchAttemptsCsv } from '../utils/exportResearch';
 import { pendingAssignmentKey, requestResearchSession } from './researchAssignment';
+import { validResearchFeedback } from '../utils/researchFeedback';
 
 const sessionKey = 'toxicheck_research_session_v1';
 const attemptsKey = 'toxicheck_research_attempts_v1';
 const eventsKey = 'toxicheck_research_events_v1';
 const startedAttemptsKey = 'toxicheck_research_started_attempts_v1';
+const feedbackKey = 'toxicheck_research_feedback_v1';
 
 export const researchDataChangedEvent = 'toxicheck-research-data-changed';
 
@@ -61,6 +64,31 @@ export function createResearchSession(): Promise<ResearchSession> {
 
 export function readResearchAttempts(): ResearchAttemptRecord[] {
   return parseJson<ResearchAttemptRecord[]>(window.localStorage.getItem(attemptsKey), []);
+}
+
+export function readResearchFeedback(): ResearchFeedback[] {
+  return parseJson<ResearchFeedback[]>(window.localStorage.getItem(feedbackKey), []);
+}
+
+export function feedbackForSession(session: ResearchSession): ResearchFeedback | undefined {
+  return readResearchFeedback().find((item) =>
+    validResearchFeedback(item, session.participantId, session.sequenceId));
+}
+
+export function appendResearchFeedback(feedback: ResearchFeedback): ResearchFeedback {
+  if (!validResearchFeedback(feedback, feedback.participant_id, feedback.sequence_id)) {
+    throw new Error('Invalid research feedback');
+  }
+  const feedbacks = readResearchFeedback();
+  const existing = feedbacks.find((item) => item.participant_id === feedback.participant_id);
+  if (existing) {
+    if (existing.sequence_id !== feedback.sequence_id) throw new Error('Feedback sequence cannot change');
+    return existing;
+  }
+  // The caller persists the completed session immediately afterwards. That single
+  // notification queues the feedback and completed stage together.
+  window.localStorage.setItem(feedbackKey, JSON.stringify([...feedbacks, feedback]));
+  return feedback;
 }
 
 export function appendResearchAttempt(attempt: ResearchAttemptRecord): void {
@@ -128,12 +156,14 @@ export function readCollectedResearchAttempts(): ResearchCollectedAttempt[] {
 }
 
 export function getResearchParticipantPayload(session: ResearchSession): ResearchParticipantPayload {
+  const feedback = feedbackForSession(session);
   return {
     schema_version: 1, experiment_version: 'collection-v1',
     participant_id: session.participantId, sequence_id: session.sequenceId,
     session,
     attempts: readCollectedResearchAttempts().filter((item) => item.participant_id === session.participantId),
     events: readResearchEvents().filter((item) => item.participant_id === session.participantId),
+    ...(feedback ? { feedback } : {}),
   };
 }
 
@@ -154,6 +184,7 @@ export function getResearchExportPayload() {
     active_session: loadResearchSession(),
     attempts: readResearchAttempts(),
     events: readResearchEvents(),
+    feedback: readResearchFeedback(),
     started_attempts: readCollectedResearchAttempts().filter((attempt) => attempt.status === 'started')
   };
 }
@@ -182,6 +213,6 @@ export function downloadResearchCsv(): void {
   downloadFile(
     `toxicheck-research-attempts-${new Date().toISOString().slice(0, 10)}.csv`,
     'text/csv;charset=utf-8',
-    researchAttemptsCsv(readCollectedResearchAttempts())
+    researchAttemptsCsv(readCollectedResearchAttempts(), readResearchFeedback())
   );
 }

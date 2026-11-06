@@ -11,7 +11,20 @@ export type ResearchStage =
   | 'intro'
   | 'task'
   | 'task-complete'
+  | 'feedback'
   | 'complete';
+
+export type ResearchFeedbackAnswers = {
+  flat_ease_rating: number;
+  hybrid_ease_rating: number;
+  preferred_model: 'flat' | 'hybrid' | 'equal' | 'unsure';
+};
+
+export type ResearchFeedback = ResearchFeedbackAnswers & {
+  participant_id: string;
+  sequence_id: ResearchSequenceId;
+  feedback_submitted_at: string;
+};
 
 export type ResearchIngredient = {
   id: string;
@@ -151,4 +164,5 @@ export type ResearchParticipantPayload = {
   session: ResearchSession;
   attempts: ResearchCollectedAttempt[];
   events: ResearchEventLogEntry[];
+  feedback?: ResearchFeedback;
 };
