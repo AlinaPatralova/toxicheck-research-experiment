@@ -1,60 +1,126 @@
-# ToxiCheck Research Experiment
+# ToxiCheck Research — исследовательский прототип
 
-Standalone Flat/Hybrid research prototype. This repository is not a fork, remote,
-deployment, or backend client of the production ToxiCheck repository.
+Самостоятельный веб-прототип для сравнения двух способов настройки персональных
+ограничений: плоской модели (Flat) и гибридной модели (Hybrid).
 
-## Run Locally
+Исследование использует отдельный репозиторий, проект Vercel и базу Supabase.
+Серверная часть основного продукта ToxiCheck в прототипе не используется.
 
-Use Node.js 24 (tested version in `.nvmrc`) and npm 11 or newer.
+**Рабочая версия:** [открыть исследование](https://toxicheck-research-experiment.vercel.app/research).
+
+## Локальный запуск
+
+Нужны Node.js 24 (проверенная версия указана в `.nvmrc`) и npm 11 или новее.
 
 ```sh
 npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
-Open the printed URL. Both `/` and `/research` open the experiment. Product routes
-are not mounted. Local-only use needs no backend, account, database, or environment variables.
-The existing Montserrat web-font request remains unchanged to preserve appearance.
+Откройте адрес, который появится в терминале. Пути `/` и `/research` ведут
+к исследованию. Экраны основного продукта не подключены к маршрутам прототипа.
+Для сохранения оформления используется веб-шрифт Montserrat.
 
-## Validate
+Команда `npm run dev` запускает только клиентскую часть Vite. Для создания новой
+сессии необходим серверный `POST /api/research`: он назначает последовательность
+заданий через Supabase. Для полного прохождения используйте тестовый деплой Vercel
+(Preview) или локальный сервер `vercel dev` с настроенным API и переменными
+окружения. Настройка описана в [инструкции по сбору данных](docs/CENTRAL_COLLECTION.md).
+
+## Как устроено исследование
+
+Участник проходит тренировку и шесть основных заданий: по три в Flat и Hybrid.
+После заданий открывается анкета «Оценка удобства», затем — итоговый экран
+с выгрузкой CSV и JSON. Время заполнения анкеты не включается во время выполнения
+заданий (TCT).
+
+Для основного исследования используется одна ссылка `/research`. Новые участники
+получают последовательности A/B/C/D с помощью серверной блочной рандомизации:
+в каждом блоке из четырёх назначений встречается по одному варианту в случайном
+порядке. Назначение сохраняется на всё прохождение.
+
+| Последовательность | Первый блок | Второй блок |
+| --- | --- | --- |
+| A | Flat S1 | Hybrid S2 |
+| B | Hybrid S2 | Flat S1 |
+| C | Flat S2 | Hybrid S1 |
+| D | Hybrid S1 | Flat S2 |
+
+Параметр `?sequence=A`, `B`, `C` или `D` предназначен для технических проверок.
+Такие сессии помечаются как тестовые, не занимают места в распределении реальных
+участников и не включаются в стандартную выгрузку исследования.
+
+## Хранение и выгрузка данных
+
+Сессии, попытки, журнал действий и ответы анкеты сохраняются в `localStorage`
+браузера. При включённом централизованном сборе серверный API отправляет их
+в отдельный проект Supabase: одна JSON-запись на участника. При сетевых ошибках
+локальная очередь повторяет отправку.
+
+Отключение фоновой отправки результатов не отменяет необходимость API для
+назначения последовательности при старте новой сессии.
+
+Ключи базы используются только на сервере. Файлы `.env`, локальные настройки
+деплоя и выгрузки результатов исключены из Git. Подробности — в
+[описании безопасности](SECURITY.md).
+
+Кнопки итогового экрана выгружают данные этого браузера. Для выгрузки результатов
+из Supabase настройте `.env.local` по инструкции и выполните:
+
+```sh
+npm run export:research
+```
+
+В каталоге `exports/` появятся JSON и CSV. JSON содержит сессии, попытки, события
+и оценки удобства. В CSV одна строка соответствует одной попытке; оценки удобства
+повторяются в строках соответствующего участника.
+
+Разные браузеры, домены и порты используют отдельные хранилища. Смена домена или переход
+на Preview создаёт другой локальный контекст. Перед очисткой данных браузера
+сохраните нужную выгрузку.
+
+Текущее ограничение: после полного обновления страницы незавершённый профиль
+ингредиентов не восстанавливается. Идентификатор участника, последовательность
+и время начала основного задания сохраняются.
+
+## Проверки проекта
 
 ```sh
 npm run check
 ```
 
-This runs publishable-file secret checks, non-mutating repository-wide lint, all tests,
-type-check/build, and a built-artifact isolation check. Run `git init -b main` first
-if working from a source ZIP without Git metadata.
+Команда проверяет публикуемые файлы на возможные секреты, запускает линтеры
+без автоматического изменения исходников, тесты, проверку типов, сборку и проверку
+изоляции клиентского приложения от серверного кода и сервисов основного продукта.
 
-`npm run lint:legacy` separately audits the retained, inactive product screens.
-Those files and their dependencies are preserved, not refactored or bundled in
-the research application. Research source, scenarios, metrics, and logging were
-copied unchanged during extraction.
+Если проект получен в ZIP-архиве без истории Git, перед проверкой выполните
+`git init -b main`.
 
-Direct dependencies are pinned to the versions installed in the working prototype,
-including Vue 3.6.0-rc.11 and Vue Router 5.4.0. The old lockfile lagged behind that
-working installation; the research lockfile was regenerated to match those direct
-versions. The existing Vue release candidate is retained, not silently replaced.
+Дополнительная команда `npm run lint:legacy` проверяет файлы каталога `src`.
+В репозитории сохранены неиспользуемые экраны основного продукта и их зависимости;
+они не включаются в исследовательскую сборку.
 
-## Repository And Deployment
+Прямые зависимости закреплены точными версиями, включая Vue 3.6.0-rc.11 и
+Vue Router 5.4.0. Файл `package-lock.json` соответствует этим версиям.
 
-- [Connect a new GitHub repository](docs/GITHUB_SETUP.md)
-- [Create a separate deployment](docs/DEPLOYMENT.md)
-- [Enable central collection with Supabase](docs/CENTRAL_COLLECTION.md)
-- [Experiment freeze and change policy](docs/EXPERIMENT_FREEZE.md)
-- [Security and participant data](SECURITY.md)
-- [Preparation audit](docs/PREPARATION_AUDIT.md)
+## Ветки и публикация
 
-`main` is the stable experiment. `dev` is for changes before freeze. Publish only
-to a newly created `toxicheck-research-experiment` repository. Never add a production
-remote or import a production deployment's account-link directory or environment.
+- `main` — стабильная версия для проведения эксперимента.
+- `dev` — дальнейшие изменения и проверки перед фиксацией версии.
 
-Participant sessions, attempts, and raw events remain in the browser's localStorage.
-With central collection disabled, they are not uploaded. The optional research API
-backs up one JSON row per participant in a separate Supabase project; see the setup
-guide above. Exports belong outside Git. Each origin and
-browser has separate storage; changing domains or using preview URLs changes the
-local participant/session context. Export data before clearing browser storage.
+Перед основным сбором данных финальную версию из `dev` переносят в `main`.
+После фиксации интерфейс не меняют во время основной выборки без отдельного решения.
 
-Existing limitation: a full reload does not restore an unfinished profile. Repository
-preparation does not change this behavior or any experiment measure.
+Для публикации используются только репозиторий `toxicheck-research-experiment`
+и отдельный исследовательский проект Vercel. Настройки, секреты и привязки
+основного продукта ToxiCheck в него не переносятся.
+
+## Дополнительная документация
+
+- [Подключение репозитория GitHub](docs/GITHUB_SETUP.md)
+- [Отдельный деплой исследования](docs/DEPLOYMENT.md)
+- [Централизованный сбор данных через Supabase](docs/CENTRAL_COLLECTION.md)
+- [Назначение последовательностей A/B/C/D](docs/COUNTERBALANCING.md)
+- [Фиксация экспериментальной версии и правила изменений](docs/EXPERIMENT_FREEZE.md)
+- [Безопасность и данные участников](SECURITY.md)
+- [Отчёт о подготовке самостоятельного репозитория](docs/PREPARATION_AUDIT.md)
